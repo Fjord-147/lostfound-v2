@@ -1,6 +1,14 @@
 // API 客户端：fetch 封装（cookie 自动带上）
-export const API =
-  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+// 基址动态跟随当前页面主机名，避免 127.0.0.1 / localhost 跨站导致 cookie 丢失；
+// 也可用 NEXT_PUBLIC_API_BASE 显式覆盖（如生产走 nginx 同域时留空同源）。
+function resolveApiBase(): string {
+  if (process.env.NEXT_PUBLIC_API_BASE) return process.env.NEXT_PUBLIC_API_BASE;
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol}//${window.location.hostname}:8000`;
+  }
+  return "http://localhost:8000"; // SSR 兜底
+}
+export const API = resolveApiBase();
 
 export async function api<T = any>(
   path: string,

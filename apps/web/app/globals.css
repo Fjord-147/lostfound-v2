@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 全局基础 */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* 表单基础（输入框16px防iOS缩放） */
+@layer components {
+  .inp {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base
+      outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20
+      disabled:bg-slate-100 disabled:text-slate-400;
+  }
+  .lbl {
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg
+      bg-gradient-to-br from-brand to-brand-dark px-4 py-2.5 text-[15px] font-medium
+      text-white shadow-sm transition hover:-translate-y-px hover:shadow-md
+      active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0;
+  }
+  .btn-outline {
+    @apply border border-brand bg-white text-brand shadow-none hover:bg-brand-light;
+  }
+  .btn-danger {
+    @apply border border-red-600 bg-white text-red-600 shadow-none hover:bg-red-50;
+  }
+  .btn-sm {
+    @apply min-h-[36px] px-3 py-1.5 text-sm;
+  }
+  .tag {
+    @apply inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .tag-pending {
+    @apply bg-orange-100 text-orange-700;
+  }
+  .tag-returned {
+    @apply bg-green-100 text-green-700;
+  }
+  .tag-source {
+    @apply border border-purple-200 bg-purple-100 text-purple-700;
+  }
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+  }
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c8d8d2;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0891b2;
+}
+
+/* 抽屉动画 */
+.drawer-mask {
+  animation: fadeIn 0.2s ease;
+}
+.drawer-panel {
+  animation: slideIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+/* 角标脉动 */
+@keyframes badgePulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+.badge-pulse {
+  animation: badgePulse 2s infinite;
+}

@@ -1,0 +1,93 @@
+// 苏州和康中医医院 失物招领系统 v2 —— Prisma Schema
+// 字段对等 v1（SQLite），保证数据零转换迁移
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 员工账号（本期账号密码；SSO 接入后加 externalId 映射列即可，业务零改动）
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  name         String // 真名，如"刘敏"，用于登记/认领留痕
+  role         String   @default("staff") // staff / admin
+  // externalId  String?  @unique  // SSO 预留：auth-service 用户标识
+  createdAt    DateTime @default(now())
+
+  @@map("users")
+}
+
+// 失物（含拾物登记 + 认领信息 + 患者报失转入）
+model Item {
+  id              Int      @id @default(autoincrement())
+  code            String   @unique // 失物编号 YYYYMMDD-NNN
+  name            String
+  category        String?
+  description     String? // 特征描述（核对答案，公众端不可见）
+  photo           String? // 逗号分隔多张文件名
+  foundLocation   String? @map("found_location")
+  foundTime       String? @map("found_time")
+  founder         String? // 捡到人（患者报失固定"患者报失"）
+  status          String   @default("待认领") // 待认领 / 已认领
+  createdAt       DateTime @default(now()) @map("created_at")
+  // 认领时回填
+  claimerName     String?  @map("claimer_name")
+  claimerPhone    String?  @map("claimer_phone")
+  featureVerified Boolean  @default(false) @map("feature_verified")
+  claimedAt       String?  @map("claimed_at") // 认领时间（可手填历史时间）
+  operator        String? // 经办人（真名）
+  claimerPhoto    String?  @map("claimer_photo") // 认领人照片（老人留照备查）
+  claimerGroup    String?  @map("claimer_group") // 人群：老人/小孩/青年/中年/其他
+  claimerGender   String?  @map("claimer_gender") // 性别：男/女
+  storageLocation String?  @map("storage_location") // 存放位置（必填）
+  hiddenPhotos    String?  @map("hidden_photos") // 🔒隐藏照片文件名（逗号分隔，公众端连马赛克都不给）
+  source          String? // 来源：空=导医登记 / "患者报失"
+  registeredBy    String?  @map("registered_by") // 登记人
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("items")
+}
+
+// 公众报失
+model LostReport {
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now()) @map("created_at")
+  ownerName     String   @map("owner_name")
+  ownerPhone    String   @map("owner_phone")
+  itemName      String   @map("item_name")
+  itemCategory  String?  @map("item_category")
+  description   String?
+  lostLocation  String?  @map("lost_location")
+  lostTime      String?  @map("lost_time")
+  photo         String?
+  status        String   @default("待查找") // 待查找 / 已登记 / 已找到 / 已忽略
+  matchedItemId Int?     @map("matched_item_id") // 关联生成的 Item.id
+  note          String?
+  handledBy     String?  @map("handled_by")
+  handledAt     String?  @map("handled_at")
+
+  @@index([status])
+  @@map("lost_reports")
+}
+
+// 审计日志（按标准：操作人/时间/类型/变更内容）
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  operator  String // 操作人（真名或"公众"）
+  action    String // login/register/edit/claim/unclaim/delete/report_register/report_found/report_ignore/...
+  entity    String // item / lost_report / auth
+  entityId  Int?
+  detail    Json? // 变更内容摘要
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}

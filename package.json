@@ -1,0 +1,10 @@
+{
+  "name": "lostfound-v2",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter @lostfound/web --filter @lostfound/api dev",
+    "build": "pnpm --filter @lostfound/api build && pnpm --filter @lostfound/web build",
+    "migrate": "pnpm --filter @lostfound/api prisma:migrate",
+    "seed": "pnpm --filter @lostfound/api prisma:seed"
+  }
+}

@@ -203,7 +203,7 @@ export function toast(msg: string, type = "info") {
 export function ToastHost() {
   const [list, setList] = useState<{ id: number; msg: string; type: string }[]>([]);
   useEffect(() => {
-    toastFn = (msg, type) => {
+    toastFn = (msg, type = "info") => {
       const id = Date.now() + Math.random();
       setList((l) => [...l, { id, msg, type }]);
       setTimeout(() => setList((l) => l.filter((t) => t.id !== id)), 2600);

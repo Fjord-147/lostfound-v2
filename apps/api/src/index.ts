@@ -3,6 +3,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import { UPLOAD_DIR, ensureUploadDirs } from "./config";
 import authRoutes from "./routes/auth";
 import itemRoutes from "./routes/items";
@@ -15,6 +16,8 @@ import { errorHandler } from "./middleware/errorHandler";
 ensureUploadDirs();
 
 const app = express();
+// 跨域：前后端分离（web:3000 → api:8000），反射Origin并允许cookie
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 app.use(cookieParser());

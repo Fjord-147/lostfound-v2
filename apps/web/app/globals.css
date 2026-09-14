@@ -28,10 +28,11 @@ body {
       active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0;
   }
   .btn-outline {
-    @apply border border-brand bg-white text-brand shadow-none hover:bg-brand-light;
+    /* 统一实底白字（与主按钮同风格） */
+    @apply border-0 bg-gradient-to-br from-brand to-brand-dark text-white;
   }
   .btn-danger {
-    @apply border border-red-600 bg-white text-red-600 shadow-none hover:bg-red-50;
+    @apply border-0 bg-gradient-to-br from-red-600 to-red-700 text-white;
   }
   .btn-sm {
     @apply min-h-[36px] px-3 py-1.5 text-sm;

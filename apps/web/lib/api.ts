@@ -1,7 +1,10 @@
 // API 客户端：fetch 封装（cookie 自动带上）
-// 基址动态跟随当前页面主机名，避免 127.0.0.1 / localhost 跨站导致 cookie 丢失；
-// 也可用 NEXT_PUBLIC_API_BASE 显式覆盖（如生产走 nginx 同域时留空同源）。
+// 基址解析顺序：
+//  1) build 时设 NEXT_PUBLIC_API_SAME_ORIGIN=1 → 同源相对路径（生产 nginx 同域反代用）
+//  2) NEXT_PUBLIC_API_BASE 显式指定
+//  3) 开发：动态跟随页面主机名+8000，避免 127.0.0.1/localhost 跨站 cookie 丢失
 function resolveApiBase(): string {
+  if (process.env.NEXT_PUBLIC_API_SAME_ORIGIN === "1") return "";
   if (process.env.NEXT_PUBLIC_API_BASE) return process.env.NEXT_PUBLIC_API_BASE;
   if (typeof window !== "undefined") {
     return `${window.location.protocol}//${window.location.hostname}:8000`;

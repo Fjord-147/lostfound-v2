@@ -7,3 +7,4 @@ uploads/
 !uploads/.gitkeep
 *.db
 .DS_Store
+*.tsbuildinfo

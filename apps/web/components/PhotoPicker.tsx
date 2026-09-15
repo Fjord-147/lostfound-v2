@@ -30,14 +30,20 @@ export default function PhotoPicker({
   // 摄像头开关
   useEffect(() => {
     if (tab === "camera") {
+      // HTTP 环境下浏览器直接禁用摄像头 API（getUserMedia 不存在）
+      if (!navigator.mediaDevices?.getUserMedia) {
+        toast("当前网络(HTTP)无法使用摄像头，已切换到上传，点「上传」可直接调起相机", "warn");
+        setTab("upload");
+        return;
+      }
       navigator.mediaDevices
-        ?.getUserMedia({ video: { facingMode: "environment" } })
+        .getUserMedia({ video: { facingMode: "environment" } })
         .then((s) => {
           streamRef.current = s;
           if (videoRef.current) videoRef.current.srcObject = s;
         })
         .catch(() => {
-          toast("无法打开摄像头，请改用上传图片", "warn");
+          toast("无法打开摄像头，请改用「上传」（手机可调起相机）", "warn");
           setTab("upload");
         });
     } else {

@@ -20,7 +20,13 @@ router.get("/summary", async (req, res) => {
 
   const [foundCount, returnedCount, pendingCount, byCategory] = await Promise.all([
     prisma.item.count({ where: { createdAt: { gte, lte } } }),
-    prisma.item.count({ where: { status: "已认领", claimedAt: { gte: dateFrom, lte: dateTo + "~" } } }),
+    // claimedAt 是 "YYYY-MM-DD HH:MM:SS" 字符串，比较时两端补全天/秒边界
+    prisma.item.count({
+      where: {
+        status: "已认领",
+        claimedAt: { gte: dateFrom + " 00:00:00", lte: dateTo + " 23:59:59" },
+      },
+    }),
     prisma.item.count({ where: { status: "待认领", createdAt: { gte, lte } } }),
     prisma.item.groupBy({
       by: ["category"],

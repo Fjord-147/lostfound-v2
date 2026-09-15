@@ -14,16 +14,21 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setErr("");
-    const d = await api("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    });
-    setLoading(false);
-    if (d.ok) {
-      router.push("/admin");
-      router.refresh();
-    } else {
-      setErr(d.msg || "登录失败");
+    try {
+      const d = await api("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      });
+      if (d.ok) {
+        router.push("/admin");
+        router.refresh();
+      } else {
+        setErr(d.msg || "登录失败");
+      }
+    } catch {
+      setErr("网络异常，请检查网络后重试");
+    } finally {
+      setLoading(false); // 无论如何都解除"登录中"
     }
   }
 

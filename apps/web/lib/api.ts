@@ -17,14 +17,20 @@ export async function api<T = any>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const res = await fetch(API + path, {
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+  let res: Response;
+  try {
+    res = await fetch(API + path, {
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+      ...options,
+    });
+  } catch {
+    // 网络层失败（断网/跨域拦截/服务器宕机）——统一兜底，不让页面卡死
+    return { ok: false, msg: "网络异常，请检查网络后重试" } as T;
+  }
   // Excel 下载等二进制
   if (res.headers.get("content-disposition")) {
     return res as any;

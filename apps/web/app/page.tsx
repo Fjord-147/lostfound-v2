@@ -8,11 +8,17 @@ import { CATEGORIES } from "@/lib/types";
 export default function PublicHome() {
   const [items, setItems] = useState<any[]>([]);
   const [cat, setCat] = useState("");
+  const [error, setError] = useState(false);
 
   useEffect(() => {
+    setError(false);
     fetch(`${API}/api/public/items${cat ? `?category=${encodeURIComponent(cat)}` : ""}`)
       .then((r) => r.json())
-      .then((d) => d.ok && setItems(d.items));
+      .then((d) => {
+        if (d.ok) setItems(d.items);
+        else setError(true);
+      })
+      .catch(() => setError(true));
   }, [cat]);
 
   return (
@@ -60,7 +66,12 @@ export default function PublicHome() {
       </div>
 
       {/* 半盲卡片 */}
-      {items.length > 0 ? (
+      {error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center text-sm text-red-600">
+          网络异常，无法加载失物列表<br />
+          <button onClick={() => location.reload()} className="mt-2 rounded-lg border border-red-300 bg-white px-4 py-2">刷新重试</button>
+        </div>
+      ) : items.length > 0 ? (
         <div className="grid grid-cols-2 gap-2.5">
           {items.map((it) => (
             <div key={it.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">

@@ -3,6 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { API, api } from "@/lib/api";
 
+// ISO(UTC) → 本地时间 "YYYY-MM-DD HH:mm:ss"
+function fmtLocal(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
 export default function StatsPage() {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, "0");
@@ -87,7 +95,7 @@ export default function StatsPage() {
             <tbody>
               {logs.map((l) => (
                 <tr key={l.id} className="border-t border-slate-100">
-                  <td className="whitespace-nowrap px-3 py-2 text-slate-500">{String(l.createdAt).replace("T", " ").slice(0, 19)}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-slate-500">{fmtLocal(l.createdAt)}</td>
                   <td className="whitespace-nowrap px-3 py-2">{l.operator}</td>
                   <td className="whitespace-nowrap px-3 py-2">
                     <span className="rounded bg-slate-100 px-2 py-0.5 text-xs">{l.action}</span>

@@ -93,7 +93,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="mx-auto max-w-6xl p-4 md:p-6">{children}</div>
       </main>
 
-      {/* 手机底部导航 */}
+      {/* 手机底部导航（含退出） */}
       <nav className="fixed bottom-0 left-0 right-0 z-[100] flex h-14 items-stretch bg-brand shadow-[0_-2px_8px_rgba(0,0,0,.15)] md:hidden">
         {NAV.map((n) => (
           <Link
@@ -105,13 +105,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             <span className="text-lg">{n.icon}</span>
             {n.label}
-            {n.href === "/reports" && badge > 0 && (
+            {n.href === "/admin/reports" && badge > 0 && (
               <span className="absolute right-3 top-1 min-w-[16px] rounded-full bg-red-600 px-1 text-center text-[10px] font-bold leading-4">
                 {badge > 99 ? "99+" : badge}
               </span>
             )}
           </Link>
         ))}
+        <button
+          onClick={logout}
+          className="flex flex-1 flex-col items-center justify-center gap-0.5 border-l border-white/20 text-[10px] text-white/85"
+          title="退出登录"
+        >
+          <span className="text-lg">⏻</span>
+          退出
+        </button>
       </nav>
     </div>
   );

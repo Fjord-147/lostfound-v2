@@ -18,7 +18,7 @@ export default function ReportsPage() {
   const [confirmReg, setConfirmReg] = useState<any>(null);
   const [confirmIg, setConfirmIg] = useState<any>(null);
   const [foundRep, setFoundRep] = useState<any>(null);
-  const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+  const [zoomPhotos, setZoomPhotos] = useState<string[] | null>(null);
   const [me, setMe] = useState("");
 
   useEffect(() => { api("/api/auth/me").then((d) => d.ok && setMe(d.user.name)); }, []);
@@ -85,11 +85,11 @@ export default function ReportsPage() {
               <span className="ml-auto text-xs text-slate-400">{r.createdAt}</span>
             </div>
             <div className="flex gap-3.5">
-              {r.photo && (
+              {r.photo && (r.photo.split(",").map((p: string) => p.trim()).filter(Boolean).map((p: string, i: number) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`/api/upload/files/${r.photo}`} onClick={() => setZoomPhoto(r.photo)}
+                <img key={i} src={`/api/upload/files/${p}`} onClick={() => setZoomPhotos(r.photo.split(",").map((x: string) => x.trim()).filter(Boolean))}
                   className="h-[90px] w-[90px] flex-shrink-0 cursor-zoom-in rounded border border-slate-200 object-cover" alt="" />
-              )}
+              )))}
               <div className="flex-1 text-sm leading-relaxed">
                 <div><span className="text-slate-500">失主：</span>{r.ownerName}　<span className="text-slate-500">电话：</span>{r.ownerPhone}</div>
                 <div><span className="text-slate-500">类别：</span>{CATEGORY_ICONS[r.itemCategory || ""] || ""} {r.itemCategory || "—"}　<span className="text-slate-500">丢失地点：</span>{r.lostLocation || "—"}</div>
@@ -131,7 +131,7 @@ export default function ReportsPage() {
       <FoundClaimDrawer rep={foundRep} me={me} onClose={() => setFoundRep(null)}
         onDone={(msg) => { toast(msg, "success"); load(); setFoundRep(null); }} />
 
-      {zoomPhoto && <PhotoZoom photos={[zoomPhoto]} start={0} onClose={() => setZoomPhoto(null)} />}
+      {zoomPhotos && <PhotoZoom photos={zoomPhotos} start={0} onClose={() => setZoomPhotos(null)} />}
     </div>
   );
 }

@@ -26,12 +26,14 @@ export default function ReportPage() {
     setErr(""); setOk("");
     setBusy(true);
     try {
+      // 多张照片全部上传，逗号拼接存储（与失物端 photo 字段格式一致）
       let photo: string | undefined;
       const cam = photos.filter((p) => !p.filename && p.dataUrl);
       if (cam.length) {
         const blobs = await Promise.all(cam.map((p) => fetch(p.dataUrl!).then((r) => r.blob())));
         const files = blobs.map((b, i) => new File([b], `rep_${i}.jpg`, { type: "image/jpeg" }));
-        photo = (await uploadFiles(files))[0];
+        const names = await uploadFiles(files);
+        photo = names.join(",");
       }
       const res = await fetch(`${API}/api/public/report`, {
         method: "POST",
@@ -49,6 +51,8 @@ export default function ReportPage() {
         setOwnerName(""); setOwnerPhone(""); setItemName(""); setDescription(""); setPhotos([]);
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else setErr(d.msg || "提交失败");
+    } catch {
+      setErr("网络异常，提交失败，请检查网络后重试");
     } finally { setBusy(false); }
   }
 

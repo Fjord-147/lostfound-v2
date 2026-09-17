@@ -27,7 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     });
   }, [router]);
 
-  // 报失角标：每分钟轮询
+  // 报失角标：每分钟轮询 + 监听操作后即时刷新事件
   useEffect(() => {
     let alive = true;
     const tick = () =>
@@ -36,9 +36,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }).catch(() => {});
     tick();
     const t = setInterval(tick, 60_000);
+    // 报失页每次增删改后 dispatch("lf-refresh-badge")，角标立刻更新
+    const onRefresh = () => tick();
+    window.addEventListener("lf-refresh-badge", onRefresh);
     return () => {
       alive = false;
       clearInterval(t);
+      window.removeEventListener("lf-refresh-badge", onRefresh);
     };
   }, []);
 
@@ -88,8 +92,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* 内容区 */}
-      <main className="flex-1 pb-16 md:pb-0 md:min-w-0">
+      {/* 内容区（手机 pb-20：给底部固定导航 56px + 余量，防内容被遮） */}
+      <main className="flex-1 pb-20 md:pb-0 md:min-w-0">
         <div className="mx-auto max-w-6xl p-4 md:p-6">{children}</div>
       </main>
 

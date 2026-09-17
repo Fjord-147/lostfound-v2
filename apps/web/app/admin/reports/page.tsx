@@ -28,6 +28,8 @@ export default function ReportsPage() {
     api(`/api/reports?${p}`).then((d) => {
       if (d.ok) { setReports(d.reports); setCounts(d.counts); }
     });
+    // 通知侧边栏/底部导航角标即时刷新
+    window.dispatchEvent(new Event("lf-refresh-badge"));
   }, [status, q]);
   useEffect(() => { load(); }, [load]);
 

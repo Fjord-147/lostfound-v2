@@ -37,8 +37,9 @@ export async function api<T = any>(
   }
   const data = await res.json().catch(() => ({ ok: false, msg: "响应解析失败" }));
   if (!res.ok && res.status === 401 && typeof window !== "undefined") {
-    // 未登录 → 跳登录（公众页面除外）
-    if (!location.pathname.startsWith("/report")) {
+    // 会话过期 → 跳登录；但登录请求本身的 401（密码错误）交给登录页显示错误，不跳转
+    const isLoginReq = path.includes("/api/auth/login");
+    if (!isLoginReq && !location.pathname.startsWith("/report") && !location.pathname.startsWith("/login")) {
       location.href = "/login";
     }
   }

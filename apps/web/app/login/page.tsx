@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const pwdRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   async function submit(e: React.FormEvent) {
@@ -24,6 +25,8 @@ export default function LoginPage() {
         router.refresh();
       } else {
         setErr(d.msg || "登录失败");
+        setPassword(""); // 密码清空重输，账号保留
+        pwdRef.current?.focus();
       }
     } catch {
       setErr("网络异常，请检查网络后重试");
@@ -49,7 +52,7 @@ export default function LoginPage() {
           </div>
           <div className="mb-6">
             <label className="lbl">密码</label>
-            <input className="inp" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <input ref={pwdRef} className="inp" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           <button className="btn w-full" disabled={loading}>
             {loading ? "登录中..." : "登录"}

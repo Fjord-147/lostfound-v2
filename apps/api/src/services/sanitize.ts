@@ -6,10 +6,40 @@ const NAME_STRIP_WORDS = [
   "透明", "全新", "新款", "旧款", "破旧", "一只", "一个", "一张", "一把", "一部",
 ];
 
-/** '白色帽子' → '帽子'；删空退回类别 */
+// 单字颜色（覆盖"蓝柄雨伞"这类单字颜色场景）
+const SINGLE_COLORS = ["黑", "白", "红", "蓝", "绿", "黄", "灰", "紫", "银", "粉", "棕", "橙", "金"];
+
+// 保护词：含颜色字但颜色并非其含义的常用词，脱除前占位保护，避免误伤
+const PROTECT_WORDS = [
+  "口红", "红包", "红木", "红薯",
+  "黄金", "白金", "铂金", "金丝", "金额", "基金", "现金",
+  "粉丝", "粉条",
+  "花生", "花露水", "花瓶", "花洒",
+  "橙子", "橙汁",
+  "紫菜",
+  "银杏", "白银",
+];
+
+/** '白色帽子'→'帽子'；'蓝柄雨伞'→'雨伞'；
+ *  保护词不受伤：'口红'→'口红'（不会变'口'）。
+ *  删空退回类别。 */
 export function sanitizeName(name: string | null, category: string | null): string {
   let s = (name || "").trim();
+  // 1) 双字特征词
   for (const w of NAME_STRIP_WORDS) s = s.split(w).join("");
+  // 2) 保护词占位
+  const held: string[] = [];
+  for (const p of PROTECT_WORDS) {
+    while (s.includes(p)) {
+      held.push(p);
+      s = s.replace(p, `\x00${held.length - 1}\x00`);
+    }
+  }
+  // 3) 单字颜色脱除
+  for (const c of SINGLE_COLORS) s = s.split(c).join("");
+  // 4) 还原保护词
+  s = s.replace(/\x00(\d+)\x00/g, (_m, i) => held[Number(i)] ?? "");
+  // 5) 清理两端残留分隔符
   s = s.replace(/^[\s\-_/、，,。.]+|[\s\-_/、，,。.]+$/g, "");
   return s || category || "物品";
 }

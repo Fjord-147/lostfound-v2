@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { photosOf, CATEGORY_ICONS } from "@/lib/types";
+import { photosOf, CATEGORY_ICONS, fmtDT } from "@/lib/types";
 import { toast } from "@/components/ui";
 import RegisterDrawer from "@/components/RegisterDrawer";
 import ClaimDrawer from "@/components/ClaimDrawer";
@@ -141,7 +141,7 @@ export default function AdminHome() {
                   {it.source === "患者报失" && <span className="tag tag-source">🙋 患者报失</span>}
                 </div>
                 <div className="text-[13px] text-slate-500">
-                  {it.category || "未分类"} · {it.foundLocation || "—"} · 存放 {it.storageLocation || "—"} · 捡到 {it.foundTime || it.createdAt?.slice(0, 10)}
+                  {it.category || "未分类"} · {it.foundLocation || "—"} · 存放 {it.storageLocation || "—"} · 捡到 {fmtDT(it.foundTime) || it.createdAt?.slice(0, 10)}
                 </div>
               </div>
               {it.status === "待认领" ? (

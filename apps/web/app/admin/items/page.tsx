@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { photosOf, CATEGORY_ICONS, CATEGORY_STYLE, CATEGORIES } from "@/lib/types";
+import { photosOf, CATEGORY_ICONS, CATEGORY_STYLE, CATEGORIES, fmtDT } from "@/lib/types";
 import { toast, PhotoZoom, Modal, ConfirmDanger } from "@/components/ui";
 import ClaimDrawer from "@/components/ClaimDrawer";
 
@@ -110,7 +110,7 @@ export default function ItemsPage() {
                     <td className="px-3 py-2 font-medium">{it.name}</td>
                     <td className="whitespace-nowrap px-3 py-2">{it.category || "—"}</td>
                     <td className="px-3 py-2">{it.foundLocation || "—"}</td>
-                    <td className="whitespace-nowrap px-3 py-2">{it.foundTime || "—"}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{fmtDT(it.foundTime) || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2">
                       <span className={`tag ${it.status === "已认领" ? "tag-returned" : "tag-pending"}`}>{it.status}</span>
                       {it.source === "患者报失" && <span className="tag tag-source ml-1">🙋</span>}
@@ -189,7 +189,7 @@ export default function ItemsPage() {
                   <div><span className="text-slate-500">类别：</span>{CATEGORY_ICONS[it.category || ""]} {it.category || "未分类"}</div>
                   <div><span className="text-slate-500">捡到地点：</span>{it.foundLocation || "—"}</div>
                   <div><span className="text-slate-500">存放位置：</span>{it.storageLocation || "—"}</div>
-                  <div><span className="text-slate-500">捡到时间：</span>{it.foundTime || "—"}</div>
+                  <div><span className="text-slate-500">捡到时间：</span>{fmtDT(it.foundTime) || "—"}</div>
                   <div><span className="text-slate-500">捡到人：</span>{it.source === "患者报失" ? "患者报失" : it.founder || "—"}</div>
                   <div><span className="text-slate-500">登记人：</span>{it.registeredBy || "—"}</div>
                   <div className="col-span-2 rounded bg-amber-50 px-2 py-1.5"><span className="text-amber-700">特征：</span>{it.description || "—"}</div>

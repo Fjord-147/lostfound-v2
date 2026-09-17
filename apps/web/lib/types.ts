@@ -79,3 +79,8 @@ export function nowLocalStr(): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
+
+/** 展示用：'2026-09-17T20:55' → '2026-09-17 20:55'（去T，供列表/卡片/详情渲染） */
+export function fmtDT(s?: string | null): string {
+  return s ? s.replace("T", " ") : "";
+}

@@ -2,7 +2,7 @@
 // 报失处理：四状态筛选 + 登记入总表(确认) + 已找到(弹认领抽屉一步到位) + 忽略(确认) + 重新查找
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { CATEGORY_ICONS } from "@/lib/types";
+import { CATEGORY_ICONS, fmtDT } from "@/lib/types";
 import { toast, ConfirmDanger, PhotoZoom, Drawer } from "@/components/ui";
 import PhotoPicker, { PickedPhoto } from "@/components/PhotoPicker";
 import { uploadFiles } from "@/lib/api";
@@ -93,7 +93,7 @@ export default function ReportsPage() {
               <div className="flex-1 text-sm leading-relaxed">
                 <div><span className="text-slate-500">失主：</span>{r.ownerName}　<span className="text-slate-500">电话：</span>{r.ownerPhone}</div>
                 <div><span className="text-slate-500">类别：</span>{CATEGORY_ICONS[r.itemCategory || ""] || ""} {r.itemCategory || "—"}　<span className="text-slate-500">丢失地点：</span>{r.lostLocation || "—"}</div>
-                <div><span className="text-slate-500">丢失时间：</span>{r.lostTime || "—"}</div>
+                <div><span className="text-slate-500">丢失时间：</span>{fmtDT(r.lostTime) || "—"}</div>
                 {r.description && <div><span className="text-slate-500">特征：</span>{r.description}</div>}
                 {r.status !== "待查找" && (
                   <div className="mt-1 border-t border-dashed border-slate-200 pt-1 text-[13px] text-slate-400">

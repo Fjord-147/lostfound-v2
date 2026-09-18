@@ -9,6 +9,7 @@ import express from "express";
 import sharp from "sharp";
 import { UPLOAD_DIR } from "../config";
 import { requireAuth } from "../middleware/auth";
+import { ipUploadQuota } from "../middleware/rateLimit";
 
 const ALLOWED = new Set([".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"]);
 
@@ -84,8 +85,9 @@ function respond(req: express.Request, res: express.Response) {
 // POST /api/upload/photo —— 管理（需登录）
 router.post("/photo", requireAuth, pics("photo", 10), respond);
 
-// POST /api/upload/public-photo —— 公众报失用（无需登录；同样过内容校验）
-router.post("/public-photo", pics("photo", 10), respond);
+// POST /api/upload/public-photo —— 公众报失用（无需登录）
+// 防匿名灌盘：单次≤3张 + 每IP每10分钟≤3张（超出429并丢弃本次文件）
+router.post("/public-photo", pics("photo", 3), ipUploadQuota(10 * 60_000, 3), respond);
 
 // 原图：仅登录后可见
 router.use("/files", requireAuth, express.static(UPLOAD_DIR, { maxAge: 0 }));

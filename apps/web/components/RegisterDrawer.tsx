@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Drawer, toast } from "./ui";
 import PhotoPicker, { PickedPhoto } from "./PhotoPicker";
-import { api, uploadFiles } from "@/lib/api";
+import { api, uploadFiles, dataUrlToBlob } from "@/lib/api";
 import { CATEGORIES, LOCATIONS, nowLocalStr } from "@/lib/types";
 
 export default function RegisterDrawer({
@@ -47,15 +47,12 @@ export default function RegisterDrawer({
     if (!storage.trim()) return toast("请填写存放位置", "error");
     setSubmitting(true);
     try {
-      // 1) 未上传的（拍照dataUrl）先传服务器
+      // 1) 未上传的（拍照dataUrl）先传服务器（兼容写法，绕开老浏览器限制）
       const toUpload = photos.filter((p) => !p.filename && p.dataUrl);
       let uploaded: string[] = [];
       if (toUpload.length) {
-        const blobs = await Promise.all(
-          toUpload.map((p) => (fetch(p.dataUrl!).then((r) => r.blob())))
-        );
-        const files = blobs.map((b, i) => new File([b], `cam_${i}.jpg`, { type: "image/jpeg" }));
-        uploaded = await uploadFiles(files);
+        const blobs = toUpload.map((p) => dataUrlToBlob(p.dataUrl!));
+        uploaded = await uploadFiles(blobs, "cam");
       }
       // 2) 组装文件名数组（保持 photos 顺序：先已上传的再新传的）
       const allNames: string[] = [];
@@ -85,6 +82,9 @@ export default function RegisterDrawer({
       } else {
         toast(d.msg || "登记失败", "error");
       }
+    } catch (e: any) {
+      // 具体失败原因提示（上传/提交/兼容性任一环节崩了都能看到）
+      toast(`提交失败：${e?.message || "未知错误"}`, "error");
     } finally {
       setSubmitting(false);
     }

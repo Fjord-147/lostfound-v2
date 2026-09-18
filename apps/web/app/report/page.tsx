@@ -2,7 +2,7 @@
 // 公众报失页：姓名*电话*物品* + 类别/地点/特征/时间 + 照片（拍照/上传）
 import { useState } from "react";
 import Link from "next/link";
-import { API, uploadFiles } from "@/lib/api";
+import { API, uploadFiles, dataUrlToBlob } from "@/lib/api";
 import { CATEGORIES, LOCATIONS, nowLocalStr } from "@/lib/types";
 import PhotoPicker, { PickedPhoto } from "@/components/PhotoPicker";
 
@@ -30,9 +30,7 @@ export default function ReportPage() {
       let photo: string | undefined;
       const cam = photos.filter((p) => !p.filename && p.dataUrl);
       if (cam.length) {
-        const blobs = await Promise.all(cam.map((p) => fetch(p.dataUrl!).then((r) => r.blob())));
-        const files = blobs.map((b, i) => new File([b], `rep_${i}.jpg`, { type: "image/jpeg" }));
-        const names = await uploadFiles(files);
+        const names = await uploadFiles(cam.map((p) => dataUrlToBlob(p.dataUrl!)), "rep");
         photo = names.join(",");
       }
       const res = await fetch(`${API}/api/public/report`, {

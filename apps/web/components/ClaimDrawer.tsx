@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Drawer, toast, PhotoZoom } from "./ui";
 import PhotoPicker, { PickedPhoto } from "./PhotoPicker";
-import { api, uploadFiles } from "@/lib/api";
+import { api, uploadFiles, dataUrlToBlob } from "@/lib/api";
 import { photosOf, nowLocalStr, CATEGORY_ICONS } from "@/lib/types";
 
 export default function ClaimDrawer({
@@ -65,10 +65,8 @@ export default function ClaimDrawer({
       let claimerPhoto: string | undefined;
       const toUpload = photos.filter((p) => !p.filename && p.dataUrl);
       if (toUpload.length) {
-        const blobs = await Promise.all(toUpload.map((p) => fetch(p.dataUrl!).then((r) => r.blob())));
-        const files = blobs.map((b, i) => new File([b], `cp_${i}.jpg`, { type: "image/jpeg" }));
-        const names = await uploadFiles(files);
-        claimerPhoto = names[0];
+        const blobs = toUpload.map((p) => dataUrlToBlob(p.dataUrl!));
+        claimerPhoto = (await uploadFiles(blobs, "cp"))[0];
       } else if (photos[0]?.filename) {
         claimerPhoto = photos[0].filename;
       }
@@ -83,6 +81,8 @@ export default function ClaimDrawer({
         onDone(d.msg);
         onClose();
       } else toast(d.msg, "error");
+    } catch (e: any) {
+      toast(`提交失败：${e?.message || "未知错误"}`, "error");
     } finally {
       setSubmitting(false);
     }

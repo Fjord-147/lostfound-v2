@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { CATEGORY_ICONS, fmtDT } from "@/lib/types";
 import { toast, ConfirmDanger, PhotoZoom, Drawer } from "@/components/ui";
 import PhotoPicker, { PickedPhoto } from "@/components/PhotoPicker";
-import { uploadFiles } from "@/lib/api";
+import { uploadFiles, dataUrlToBlob } from "@/lib/api";
 import { nowLocalStr } from "@/lib/types";
 
 const STATUSES = ["待查找", "已登记", "已找到", "已忽略"];
@@ -163,15 +163,15 @@ function FoundClaimDrawer({ rep, me, onClose, onDone }: { rep: any; me: string; 
       let claimerPhoto: string | undefined;
       const cam = photos.filter((p) => !p.filename && p.dataUrl);
       if (cam.length) {
-        const blobs = await Promise.all(cam.map((p) => fetch(p.dataUrl!).then((r) => r.blob())));
-        const files = blobs.map((b, i) => new File([b], `rc_${i}.jpg`, { type: "image/jpeg" }));
-        claimerPhoto = (await uploadFiles(files))[0];
+        claimerPhoto = (await uploadFiles(cam.map((p) => dataUrlToBlob(p.dataUrl!)), "rc"))[0];
       }
       const d = await api(`/api/reports/${rep.id}/found-claim`, {
         method: "POST",
         body: JSON.stringify({ claimerName: name, claimerPhone: phone, claimerGroup: group, claimerGender: gender, claimedAt: time, featureVerified: verified, claimerPhoto }),
       });
       if (d.ok) onDone(d.msg); else toast(d.msg, "error");
+    } catch (e: any) {
+      toast(`提交失败：${e?.message || "未知错误"}`, "error");
     } finally { setSubmitting(false); }
   }
 

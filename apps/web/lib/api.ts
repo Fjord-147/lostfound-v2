@@ -46,15 +46,29 @@ export async function api<T = any>(
   return data as T;
 }
 
-// 文件上传（FormData 不能设 Content-Type）
-export async function uploadFiles(files: File[]): Promise<string[]> {
+// 文件上传（FormData 不能设 Content-Type）；兼容 File 或 Blob（自动带文件名）
+export async function uploadFiles(files: (File | Blob)[], prefix = "cam"): Promise<string[]> {
   const fd = new FormData();
-  for (const f of files) fd.append("photo", f);
+  files.forEach((f, i) => {
+    const name = f instanceof File ? f.name : `${prefix}_${i}.jpg`;
+    fd.append("photo", f, name);
+  });
   const res = await fetch(API + "/api/upload/photo", {
     method: "POST",
     credentials: "include",
     body: fd,
   });
   const data = await res.json();
+  if (!data.ok) throw new Error(data.msg || "上传失败");
   return data.filenames || [];
+}
+
+// dataUrl → Blob 的兼容实现（不依赖 fetch(dataUrl)，老手机浏览器不支持后者）
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const [head, b64] = dataUrl.split(",");
+  const mime = head.match(/:(.*?);/)?.[1] || "image/jpeg";
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
 }

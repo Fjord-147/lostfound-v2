@@ -63,7 +63,14 @@ export async function uploadFiles(
     credentials: "include",
     body: fd,
   });
-  const data = await res.json();
+  // nginx 层拦截(如413超20MB)返回的是HTML错误页——识别并转友好提示
+  if (res.status === 413) throw new Error("文件总大小超过服务器限制(20MB)，请减少张数或压缩");
+  let data: any;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`上传失败（服务返回异常 ${res.status}）`);
+  }
   if (!data.ok) throw new Error(data.msg || "上传失败");
   return data.filenames || [];
 }

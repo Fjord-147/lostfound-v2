@@ -29,8 +29,15 @@ const upload = multer({
 
 const router = Router();
 
-// POST /api/upload/photo —— 单张（前端多张就多次调用，或 photo 字段数组）
+// POST /api/upload/photo —— 管理（需登录）
 router.post("/photo", requireAuth, upload.array("photo", 10), (req, res) => {
+  const files = (req.files as Express.Multer.File[]) || [];
+  res.json({ ok: true, filenames: files.map((f) => f.filename) });
+});
+
+// POST /api/upload/public-photo —— 公众报失用（无需登录；仅图片、≤10张、单张≤16MB，
+// 滥用风险由文件类型/大小/数量限制 + nginx 层限流兜底）
+router.post("/public-photo", upload.array("photo", 10), (req, res) => {
   const files = (req.files as Express.Multer.File[]) || [];
   res.json({ ok: true, filenames: files.map((f) => f.filename) });
 });

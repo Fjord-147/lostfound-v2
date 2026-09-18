@@ -30,7 +30,8 @@ export default function ReportPage() {
       let photo: string | undefined;
       const cam = photos.filter((p) => !p.filename && p.dataUrl);
       if (cam.length) {
-        const names = await uploadFiles(cam.map((p) => dataUrlToBlob(p.dataUrl!)), "rep");
+        // 公众未登录：必须走公开上传端点
+        const names = await uploadFiles(cam.map((p) => dataUrlToBlob(p.dataUrl!)), "rep", "/api/upload/public-photo");
         photo = names.join(",");
       }
       const res = await fetch(`${API}/api/public/report`, {
@@ -49,8 +50,9 @@ export default function ReportPage() {
         setOwnerName(""); setOwnerPhone(""); setItemName(""); setDescription(""); setPhotos([]);
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else setErr(d.msg || "提交失败");
-    } catch {
-      setErr("网络异常，提交失败，请检查网络后重试");
+    } catch (e: any) {
+      // 透传真实原因（上传失败/未授权/网络异常），不再一律说"网络异常"误导用户
+      setErr(`提交失败：${e?.message || "网络异常，请重试"}`);
     } finally { setBusy(false); }
   }
 

@@ -47,13 +47,18 @@ export async function api<T = any>(
 }
 
 // 文件上传（FormData 不能设 Content-Type）；兼容 File 或 Blob（自动带文件名）
-export async function uploadFiles(files: (File | Blob)[], prefix = "cam"): Promise<string[]> {
+// endpoint：默认管理端(需登录)；公众报失传 "/api/upload/public-photo"
+export async function uploadFiles(
+  files: (File | Blob)[],
+  prefix = "cam",
+  endpoint = "/api/upload/photo"
+): Promise<string[]> {
   const fd = new FormData();
   files.forEach((f, i) => {
     const name = f instanceof File ? f.name : `${prefix}_${i}.jpg`;
     fd.append("photo", f, name);
   });
-  const res = await fetch(API + "/api/upload/photo", {
+  const res = await fetch(API + endpoint, {
     method: "POST",
     credentials: "include",
     body: fd,

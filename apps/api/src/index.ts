@@ -16,8 +16,22 @@ import { errorHandler } from "./middleware/errorHandler";
 ensureUploadDirs();
 
 const app = express();
-// 跨域：前后端分离（web:3000 → api:8000），反射Origin并允许cookie
-app.use(cors({ origin: true, credentials: true }));
+// 跨域白名单：只允许生产域名与本地开发地址携带cookie跨域调接口。
+// 其他来源（含任意恶意网站）不回显许可头，浏览器同源策略自动拦截其带凭证请求。
+const CORS_ALLOW = new Set([
+  "http://47.103.214.67:8082",   // 生产（同源部署，正常使用不触发跨域）
+  "http://localhost:3000",        // 本地开发
+  "http://127.0.0.1:3000",        // 本地开发
+]);
+const corsOptions = {
+  origin: (origin: string | undefined, cb: (err: Error | null, ok?: boolean) => void) => {
+    // 无 Origin（同源请求/curl/服务器间调用）直接放行
+    if (!origin || CORS_ALLOW.has(origin)) return cb(null, true);
+    cb(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 app.use(cookieParser());

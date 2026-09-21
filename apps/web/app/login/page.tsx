@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
@@ -10,6 +10,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const pwdRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  // 已登录访问 /login → 直接进管理端
+  useEffect(() => {
+    api("/api/auth/me").then((d) => {
+      if (d.ok) router.replace("/admin");
+    });
+  }, [router]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

@@ -176,6 +176,22 @@ function EditClaimModal({ item, onClose, onSaved }: { item: any; onClose: () => 
 }
 
 function EditItemModal({ item, onClose, onSaved }: { item: any; onClose: () => void; onSaved: () => void }) {
+  const photos = item ? photosOf(item) : [];
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (item) {
+      const h = new Set<string>((item.hiddenPhotos || "").split(",").map((x: string) => x.trim()).filter(Boolean));
+      setHidden(h);
+    }
+  }, [item]);
+  function toggleHide(p: string) {
+    setHidden((prev) => {
+      const n = new Set(prev);
+      if (n.has(p)) n.delete(p);
+      else n.add(p);
+      return n;
+    });
+  }
   const [f, setF] = useState<any>(null);
   useEffect(() => {
     if (item) setF({ name: item.name, category: item.category || "其他", description: item.description || "", foundLocation: item.foundLocation || "", foundTime: (item.foundTime || "").replace(" ", "T"), storageLocation: item.storageLocation || "", founder: item.source === "患者报失" ? "患者报失" : item.founder || "", locked: item.source === "患者报失" });
@@ -185,7 +201,7 @@ function EditItemModal({ item, onClose, onSaved }: { item: any; onClose: () => v
     <Modal open={!!item} onClose={onClose} wide>
       <form onSubmit={async (e) => {
         e.preventDefault();
-        const d = await api(`/api/items/${item.id}`, { method: "PUT", body: JSON.stringify(f) });
+        const d = await api(`/api/items/${item.id}`, { method: "PUT", body: JSON.stringify({ ...f, hiddenPhotos: [...hidden].join(',') || null, }) });
         if (d.ok) { toast(d.msg, "success"); onSaved(); } else toast(d.msg, "error");
       }}>
         <div className="mb-1 text-lg font-semibold">编辑物品信息</div>
@@ -201,6 +217,30 @@ function EditItemModal({ item, onClose, onSaved }: { item: any; onClose: () => v
           <div><label className="lbl">捡到人</label><input className="inp" value={f.founder} disabled={f.locked} onChange={(e) => setF({ ...f, founder: e.target.value })} /></div>
         </div>
         <div className="mb-4"><label className="lbl">存放位置</label><input className="inp" value={f.storageLocation} onChange={(e) => setF({ ...f, storageLocation: e.target.value })} /></div>
+      <div className="mb-4">
+        <label className="lbl">照片可见性（点 🔒 切换：隐藏后公众端看不到该张）</label>
+        <div className="flex flex-wrap gap-2">
+          {photos.map((p) => (
+            <div key={p} className="relative h-[72px] w-[72px] overflow-hidden rounded-md border border-slate-300">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/api/upload/files/${p}`} className={`h-full w-full object-cover ${hidden.has(p) ? "opacity-35" : ""}`} alt="" />
+              <button
+                type="button"
+                title={hidden.has(p) ? "已隐藏（公众看不到），点击公开" : "公众可见，点击隐藏"}
+                onClick={() => toggleHide(p)}
+                className="absolute bottom-0.5 left-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white/90 text-[11px]"
+              >
+                {hidden.has(p) ? "🔒" : "🔓"}
+              </button>
+              {hidden.has(p) && (
+                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-white/90 px-1 text-[10px] font-semibold text-red-600">已隐藏</span>
+              )}
+            </div>
+          ))}
+          {photos.length === 0 && <span className="text-sm text-slate-400">无照片</span>}
+        </div>
+      </div>
+
         <div className="flex gap-3">
           <button type="button" className="btn btn-outline flex-1" onClick={onClose}>取消</button>
           <button className="btn flex-1">保存修改</button>

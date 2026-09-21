@@ -173,6 +173,9 @@ router.put("/:id", async (req, res) => {
       // 患者报失的捡到人锁定
       founder:
         item.source === "患者报失" ? "患者报失" : (b.founder ?? item.founder),
+      // 照片可见性可事后修改：传空串/null=全部公开，传逗号串=隐藏指定照片
+      hiddenPhotos:
+        b.hiddenPhotos !== undefined ? (b.hiddenPhotos || null) : item.hiddenPhotos,
     },
   });
   await audit(req, "edit", "item", id, { before: { name: item.name }, after: { name } });

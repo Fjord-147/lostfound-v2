@@ -15,15 +15,19 @@ export async function ensureBlurVersion(filename: string): Promise<string | null
   if (fs.existsSync(dst)) return dst;
   try {
     const src = path.join(UPLOAD_DIR, path.basename(filename));
-    const img = sharp(src);
-    const meta = await img.metadata();
-    const w = Math.max(1, Math.floor((meta.width || 100) / 14));
-    const h = Math.max(1, Math.floor((meta.height || 100) / 14));
-    await sharp(src)
-      .resize(w, h)
-      .blur(1.5)
-      .resize(meta.width || 100, meta.height || 100)
-      .jpeg({ quality: 65 })
+    const meta = await sharp(src).metadata();
+    const W = meta.width || 100;
+    const H = meta.height || 100;
+    // 两段管道生成真马赛克：sharp 的链式 resize 会相互覆盖，不能一步到位
+    // ① 缩到 1/14 并轻度模糊（抹掉残余细节）
+    const small = await sharp(src)
+      .resize(Math.max(1, Math.floor(W / 14)), Math.max(1, Math.floor(H / 14)))
+      .blur(1.2)
+      .toBuffer();
+    // ② 邻近采样放大回原尺寸 = 像素块马赛克（文字/卡号不可读）
+    await sharp(small)
+      .resize(W, H, { kernel: "nearest" })
+      .jpeg({ quality: 60 })
       .toFile(dst);
     return dst;
   } catch (e) {

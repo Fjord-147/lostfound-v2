@@ -45,3 +45,26 @@ export function ipUploadQuota(windowMs = 10 * 60_000, maxFiles = 3) {
     next();
   };
 }
+
+/** 按请求数限流（防脚本刷表单）：每 windowMs 最多 max 次 */
+export function ipRateLimit(windowMs = 3600_000, max = 10) {
+  const local = new Map<string, Bucket>();
+  return (req: Request, res: Response, next: NextFunction) => {
+    const now = Date.now();
+    const ip = (req as any).clientIp || req.ip || req.socket.remoteAddress || "unknown";
+    let b = local.get(ip);
+    if (!b || now > b.resetAt) {
+      b = { count: 0, resetAt: now + windowMs };
+      local.set(ip, b);
+    }
+    if (b.count + 1 > max) {
+      const waitMin = Math.max(1, Math.ceil((b.resetAt - now) / 60_000));
+      return res.status(429).json({
+        ok: false,
+        msg: `提交过于频繁（每${Math.round(windowMs / 60000)}分钟最多${max}条），请${waitMin}分钟后再试`,
+      });
+    }
+    b.count += 1;
+    next();
+  };
+}

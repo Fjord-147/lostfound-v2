@@ -6,6 +6,7 @@ import { sanitizeName, roughDate } from "../services/sanitize";
 import { ensureBlurVersion } from "../services/mosaic";
 import { CATEGORY_ICONS } from "../config";
 import { audit } from "../middleware/audit";
+import { ipRateLimit } from "../middleware/rateLimit";
 import path from "path";
 import { UPLOAD_DIR } from "../config";
 
@@ -72,8 +73,8 @@ function placeholder(res: any) {
   res.type("image/png").send(PLACEHOLDER);
 }
 
-// POST /api/public/report —— 公众报失
-router.post("/report", async (req, res) => {
+// POST /api/public/report —— 公众报失（每IP每小时最多10条，防脚本刷库）
+router.post("/report", ipRateLimit(60 * 60_000, 10), async (req, res) => {
   const b = req.body || {};
   const ownerName = String(b.ownerName || "").trim();
   const ownerPhone = String(b.ownerPhone || "").trim();

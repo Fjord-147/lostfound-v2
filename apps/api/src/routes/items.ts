@@ -38,6 +38,9 @@ function removePhotoFiles(filenames: (string | null | undefined)[]) {
     for (const one of String(fn).split(",")) {
       const t = one.trim();
       if (!t) continue;
+      // 防路径穿越：仅允许"纯文件名"（无目录、无..），杜绝 ../../ 任意文件删除
+      if (t.includes("/") || t.includes("\\") || t.includes("..")) continue;
+      if (path.basename(t) !== t) continue;
       for (const dir of [UPLOAD_DIR, BLUR_DIR]) {
         try { fs.unlinkSync(path.join(dir, t)); } catch { /* 忽略不存在 */ }
       }
@@ -142,7 +145,9 @@ router.get("/pending", async (req, res) => {
 
 // ===== GET /api/items/:id —— 详情 =====
 router.get("/:id", async (req, res) => {
-  const item = await prisma.item.findUnique({ where: { id: Number(req.params.id) } });
+  const idNum = Number(req.params.id);
+  if (!Number.isInteger(idNum)) return res.status(400).json({ ok: false, msg: "无效的物品ID" });
+  const item = await prisma.item.findUnique({ where: { id: idNum } });
   if (!item) return res.status(404).json({ ok: false, msg: "物品不存在" });
   res.json({ ok: true, item: out(item) });
 });

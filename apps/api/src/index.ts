@@ -1,9 +1,11 @@
 // 苏州和康中医医院 失物招领系统 v2 —— API 入口
+import "./async-patch"; // 必须第一个 import：给 Router 打 async 错误补丁（在路由注册前生效）
 import express from "express";
 import path from "path";
 import fs from "fs";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import helmet from "helmet";
 import { UPLOAD_DIR, ensureUploadDirs } from "./config";
 import authRoutes from "./routes/auth";
 import itemRoutes from "./routes/items";
@@ -16,6 +18,8 @@ import { errorHandler } from "./middleware/errorHandler";
 ensureUploadDirs();
 
 const app = express();
+// 安全响应头（与兄弟项目对齐；CSP 关闭以免拦 Next.js 内联脚本，其余全开）
+app.use(helmet({ contentSecurityPolicy: false }));
 // 跨域白名单：只允许生产域名与本地开发地址携带cookie跨域调接口。
 // 其他来源（含任意恶意网站）不回显许可头，浏览器同源策略自动拦截其带凭证请求。
 const CORS_ALLOW = new Set([

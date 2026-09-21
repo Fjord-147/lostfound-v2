@@ -63,8 +63,10 @@ async function sendMosaic(req: any, res: any, idx: number) {
   if (idx < 0 || idx >= pub.length) return placeholder(res);
   const file = await ensureBlurVersion(pub[idx]);
   if (!file || !fs.existsSync(file)) return placeholder(res);
+  // 读成 Buffer 再发（res.sendFile 在部分环境有竞态/怪癖，曾致偶发500）
+  const buf = fs.readFileSync(file);
   res.setHeader("Cache-Control", "no-cache");
-  res.sendFile(file);
+  res.type("image/jpeg").send(buf);
 }
 router.get("/photo/:id/:idx", (req, res) => sendMosaic(req, res, Number(req.params.idx)));
 router.get("/photo/:id", (req, res) => sendMosaic(req, res, 0)); // 兼容首图

@@ -23,7 +23,9 @@ export default function ItemsPage() {
   const [me, setMe] = useState("");
 
   useEffect(() => {
-    setView((localStorage.getItem("lf_view") as "table" | "card") || "table");
+    // 无记忆时按屏幕宽默认：手机=卡片（表格在窄屏太挤）
+    const saved = localStorage.getItem("lf_view") as "table" | "card" | null;
+    setView(saved || (window.innerWidth < 768 ? "card" : "table"));
     api("/api/auth/me").then((d) => d.ok && setMe(d.user.name));
   }, []);
 
@@ -192,7 +194,7 @@ export default function ItemsPage() {
                   <div><span className="text-slate-500">捡到时间：</span>{fmtDT(it.foundTime) || "—"}</div>
                   <div><span className="text-slate-500">捡到人：</span>{it.source === "患者报失" ? "患者报失" : it.founder || "—"}</div>
                   <div><span className="text-slate-500">登记人：</span>{it.registeredBy || "—"}</div>
-                  <div className="col-span-2 rounded bg-amber-50 px-2 py-1.5"><span className="text-amber-700">特征：</span>{it.description || "—"}</div>
+                  <div className="col-span-2 line-clamp-3 break-all rounded bg-amber-50 px-2 py-1.5"><span className="text-amber-700">特征：</span>{it.description || "—"}</div>
                 </div>
                 {it.status === "已认领" && (
                   <div className="mt-2 rounded-md bg-white/70 px-3 py-2 text-[13px] leading-relaxed">

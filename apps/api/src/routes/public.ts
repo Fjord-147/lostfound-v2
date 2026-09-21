@@ -75,7 +75,7 @@ function placeholder(res: any) {
   res.type("image/png").send(PLACEHOLDER);
 }
 
-// POST /api/public/report —— 公众报失（每IP每小时最多10条，防脚本刷库）
+// POST /api/public/report —— 公众报失（限流+字段校验）
 router.post("/report", ipRateLimit(60 * 60_000, 10), async (req, res) => {
   const b = req.body || {};
   const ownerName = String(b.ownerName || "").trim();
@@ -83,6 +83,16 @@ router.post("/report", ipRateLimit(60 * 60_000, 10), async (req, res) => {
   const itemName = String(b.itemName || "").trim();
   if (!ownerName || !ownerPhone || !itemName) {
     return res.status(400).json({ ok: false, msg: "请填写姓名、电话、物品名称" });
+  }
+  // 电话格式：手机(1[3-9]开头11位) 或 座机(区号-号码)
+  if (!/^1[3-9]\d{9}$/.test(ownerPhone) && !/^0\d{2,3}-?\d{7,8}$/.test(ownerPhone)) {
+    return res.status(400).json({ ok: false, msg: "电话格式不正确，请填11位手机号或座机号（如 0512-12345678）" });
+  }
+  // 长度限制（防撑爆页面/垃圾数据）
+  if (ownerName.length > 20) return res.status(400).json({ ok: false, msg: "姓名过长（最多20字）" });
+  if (itemName.length > 50) return res.status(400).json({ ok: false, msg: "物品名称过长（最多50字）" });
+  if (b.description && String(b.description).length > 200) {
+    return res.status(400).json({ ok: false, msg: "特征描述过长（最多200字）" });
   }
   const rep = await prisma.lostReport.create({
     data: {

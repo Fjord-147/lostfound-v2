@@ -78,10 +78,10 @@ export default function ReportPage() {
       <div className="card p-5">
         <form onSubmit={submit}>
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            <div><label className="lbl">您的姓名 *</label><input className="inp" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required /></div>
-            <div><label className="lbl">联系电话 *</label><input className="inp" type="tel" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} required /></div>
+            <div><label className="lbl">您的姓名 *</label><input className="inp" maxLength={20} value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required /></div>
+            <div><label className="lbl">联系电话 *</label><input className="inp" type="tel" maxLength={13} placeholder="11位手机号或 0512-12345678" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} required /></div>
           </div>
-          <div className="mt-3.5"><label className="lbl">丢失物品名称 *</label><input className="inp" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="如：黑色钱包、医保卡" required /></div>
+          <div className="mt-3.5"><label className="lbl">丢失物品名称 *（最多50字）</label><input className="inp" maxLength={50} value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="如：黑色钱包、医保卡" required /></div>
           <div className="mt-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
             <div>
               <label className="lbl">物品类别</label>
@@ -99,7 +99,7 @@ export default function ReportPage() {
           </div>
           <div className="mt-3.5">
             <label className="lbl">物品特征描述</label>
-            <textarea className="inp min-h-[80px]" value={description} onChange={(e) => setDescription(e.target.value)}
+            <textarea className="inp min-h-[80px]" maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)}
               placeholder="描述越详细越容易找到，如：内有医保卡一张、钥匙两把" />
           </div>
           <div className="mt-3.5">

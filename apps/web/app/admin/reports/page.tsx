@@ -82,7 +82,7 @@ export default function ReportsPage() {
         {reports.map((r) => (
           <div key={r.id} className={`card border-l-4 p-4 ${r.status === "已找到" ? "border-l-green-500 opacity-90" : r.status === "已忽略" ? "border-l-slate-400 opacity-70" : "border-l-orange-400"}`}>
             <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
-              <span className="text-[17px] font-semibold">{r.itemName}</span>
+              <span className="text-[17px] font-semibold line-clamp-2 break-all">{r.itemName}</span>
               <span className={`tag ${r.status === "已找到" ? "tag-returned" : r.status === "待查找" ? "tag-pending" : "bg-slate-100 text-slate-500"}`}>{r.status}</span>
               <span className="ml-auto text-xs text-slate-400">{r.createdAt}</span>
             </div>
@@ -96,7 +96,7 @@ export default function ReportsPage() {
                 <div><span className="text-slate-500">失主：</span>{r.ownerName}　<span className="text-slate-500">电话：</span>{r.ownerPhone}</div>
                 <div><span className="text-slate-500">类别：</span>{CATEGORY_ICONS[r.itemCategory || ""] || ""} {r.itemCategory || "—"}　<span className="text-slate-500">丢失地点：</span>{r.lostLocation || "—"}</div>
                 <div><span className="text-slate-500">丢失时间：</span>{fmtDT(r.lostTime) || "—"}</div>
-                {r.description && <div><span className="text-slate-500">特征：</span>{r.description}</div>}
+                {r.description && <div className="line-clamp-3 break-all"><span className="text-slate-500">特征：</span>{r.description}</div>}
                 {r.status !== "待查找" && (
                   <div className="mt-1 border-t border-dashed border-slate-200 pt-1 text-[13px] text-slate-400">
                     处理：{r.handledBy || "—"} · {r.handledAt}{r.note ? ` · ${r.note}` : ""}

@@ -39,13 +39,13 @@ export default function PublicHome() {
 
       {/* 两大入口 */}
       <div className="mb-5 grid grid-cols-2 gap-2.5">
-        <a href="#list" className="flex items-center gap-2.5 rounded-xl border-2 border-sky-200 bg-gradient-to-br from-brand-light to-cyan-100 p-3.5 no-underline transition hover:-translate-y-0.5 hover:shadow-lg sm:gap-3.5 sm:p-4">
+        <button onClick={() => { setCat(""); document.getElementById("list")?.scrollIntoView({ behavior: "smooth" }); }} className="flex items-center gap-2.5 rounded-xl border-2 border-sky-200 bg-gradient-to-br from-brand-light to-cyan-100 p-3.5 text-left transition hover:-translate-y-0.5 hover:shadow-lg sm:gap-3.5 sm:p-4">
           <span className="text-3xl">🔍</span>
           <span>
             <span className="block text-[15px] font-bold text-brand-dark sm:text-[17px]">我丢了东西</span>
             <span className="block text-xs text-slate-500">看看有没有被捡到</span>
           </span>
-        </a>
+        </button>
         <Link href="/report" className="flex items-center gap-2.5 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-100 p-3.5 no-underline transition hover:-translate-y-0.5 hover:shadow-lg sm:gap-3.5 sm:p-4">
           <span className="text-3xl">📝</span>
           <span>

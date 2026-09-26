@@ -8,3 +8,4 @@ uploads/
 *.db
 .DS_Store
 *.tsbuildinfo
+logs/

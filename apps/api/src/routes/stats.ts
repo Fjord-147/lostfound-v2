@@ -9,6 +9,16 @@ import ExcelJS from "exceljs";
 const router = Router();
 router.use(requireAuth);
 
+// 防 Excel 公式注入（与 v1 的 _safe_cell 对齐）：物品名称/描述来自公众报失，原样入库；
+// 导出时被 Excel 当公式执行（如 =HYPERLINK(...)）会在打开文件的瞬间发起请求/执行命令。
+// 以 = + - @ 开头的值前加单引号，强制按纯文本处理。
+function safeCell(v: unknown): unknown {
+  if (typeof v === "string" && ["=", "+", "-", "@"].includes(v.charAt(0))) {
+    return "'" + v;
+  }
+  return v;
+}
+
 // GET /api/stats/summary?dateFrom=&dateTo=
 router.get("/summary", async (req, res) => {
   const d = new Date();
@@ -84,7 +94,7 @@ router.get("/export", async (req, res) => {
   ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0891B2" } };
   ws.views = [{ state: "frozen", ySplit: 1 }];
   for (const it of items) {
-    ws.addRow({
+    const raw = {
       code: it.code, name: it.name, category: it.category, description: it.description,
       foundLocation: it.foundLocation, storageLocation: it.storageLocation,
       foundTime: it.foundTime, founder: it.founder, registeredBy: it.registeredBy,
@@ -95,7 +105,9 @@ router.get("/export", async (req, res) => {
       featureVerified: it.claimerName ? (it.featureVerified ? "是" : "否") : "",
       claimedAt: it.claimedAt, operator: it.operator,
       photo: it.photo, claimerPhoto: it.claimerPhoto,
-    });
+    };
+    // 全字段过一遍公式注入防护
+    ws.addRow(Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, safeCell(v)])));
   }
   await audit(req, "export_excel", "item", null, { dateFrom, dateTo, count: items.length });
   const buf = await wb.xlsx.writeBuffer();

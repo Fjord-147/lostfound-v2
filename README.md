@@ -75,7 +75,28 @@ pm2 save && pm2 startup
 # nginx 反代（建议：同域路径分流，为以后 HTTPS 做准备）
 #   /        → 127.0.0.1:3000（web）
 #   /api/*   → 127.0.0.1:8000（api，含 cookie 透传）
+# ⚠️ location /api 块必须传真实访客 IP，否则限流对全站只算一个桶：
+#   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#   proxy_set_header X-Real-IP $remote_addr;
 ```
+
+## 测试（apps/api/smoke_test.sh）
+
+部署或改动后跑一轮冒烟（18 项断言，约 30 秒，只打独立测试库 `lostfound_smoke`，不碰业务库）：
+
+```bash
+# 前置：本地 PostgreSQL 可用；一次性准备：
+psql -d postgres -c "CREATE DATABASE lostfound_smoke OWNER lostfound;"
+DATABASE_URL=postgresql://lostfound:<密码>@localhost:5432/lostfound_smoke \
+  pnpm --filter @lostfound/api exec prisma migrate deploy
+
+# 跑测试（自动起 8010 测试实例、跑完自毁）
+bash apps/api/smoke_test.sh
+```
+
+覆盖：健康检查 / 公众报失+限流 / 查询我的报失（隐私）/ 登录失败限流 /
+信任代理取真实 IP / 登记+编号重试 / hiddenPhotos 子集校验 / 认领并发竞态 /
+报失→登记→撤销闭环 / Excel 导出（魔数+公式注入中和）/ 未登录 401。
 
 ### SSO 接入（待信息科提供 auth-service 文档后）
 认证收口在 `apps/api/src/middleware/auth.ts`：
@@ -106,4 +127,4 @@ tar xzf lf_uploads_日期.tar.gz -C /opt/lostfound-v2
 - [ ] 接入员工门户 / auth-service SSO（资料到位后，见上文接入点）
 - [ ] 统一服务注册表登记（服务名/端口/路径/依赖）
 - [ ] 医院共享 UI 组件替换（当前 Tailwind 自研风格）
-- [ ] 自动化测试补充（当前以 E2E 手工清单验收）
+- [x] 自动化测试补充（API 冒烟：apps/api/smoke_test.sh，18 项断言）

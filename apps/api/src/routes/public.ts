@@ -107,37 +107,40 @@ router.post("/report", ipRateLimit(60 * 60_000, 10), async (req, res) => {
     },
   });
   await audit(req, "public_report", "lost_report", rep.id, { itemName, ownerName });
-  res.json({ ok: true, msg: "报失成功！我们会尽快帮您留意，找到后请到门诊导医台核对认领。" });
+  res.json({ ok: true, msg: "报失成功！我们会尽快帮您留意。您可以在首页「查询我的报失」输入手机号随时查看进度，找到后请到门诊导医台核对认领。" });
 });
 
-// GET /api/public/my-reports?phone= —— 失主凭报失手机号查自己的处理进度
-// 仅返回该手机号本人的报失；限流防手机号遍历
-router.get("/my-reports", ipRateLimit(10 * 60_000, 20), async (req, res) => {
-  const phone = String(req.query.phone || "").trim();
-  if (!phone) return res.json({ ok: true, reports: [] });
+// POST /api/public/my-reports —— 失主按手机号查询自己的报失进度（与 v1「查询我的报失」对齐）。
+// 只返回该手机号自己的记录，限流防遍历。
+router.post("/my-reports", ipRateLimit(60 * 60_000, 10), async (req, res) => {
+  const phone = String(req.body?.phone || "").trim();
+  if (!phone) return res.status(400).json({ ok: false, msg: "请输入报失时填写的手机号" });
   const rows = await prisma.lostReport.findMany({
     where: { ownerPhone: phone },
     orderBy: { id: "desc" },
+    select: {
+      id: true, createdAt: true, itemName: true, itemCategory: true,
+      status: true, note: true, handledAt: true, lostLocation: true,
+    },
   });
-  const fmt = (d: Date | null) => {
-    if (!d) return null;
-    const p = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-  };
   res.json({
     ok: true,
     reports: rows.map((r) => ({
       id: r.id,
       itemName: r.itemName,
       itemCategory: r.itemCategory,
-      description: r.description,
       lostLocation: r.lostLocation,
       status: r.status,
-      note: r.note,
-      createdAt: fmt(r.createdAt),
+      note: r.status === "待查找" ? null : r.note, // 待查找时备注无意义，不展示
+      createdAt: fmtTime(r.createdAt),
       handledAt: r.handledAt,
     })),
   });
 });
+
+function fmtTime(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 export default router;

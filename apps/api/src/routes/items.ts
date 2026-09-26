@@ -5,7 +5,7 @@ import path from "path";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { audit } from "../middleware/audit";
-import { generateItemCode } from "../services/code";
+import { createItemWithCodeRetry } from "../services/code";
 import { normDate } from "../services/sanitize";
 import { UPLOAD_DIR, BLUR_DIR } from "../config";
 
@@ -57,27 +57,25 @@ router.post("/", async (req, res: Response) => {
   if (!storageLocation) return res.status(400).json({ ok: false, msg: "请填写存放位置，方便后续取物" });
 
   const me = req.authUser!;
-  const code = await generateItemCode();
   const photoArr: string[] = Array.isArray(b.photos) ? b.photos.filter(Boolean) : [];
   const hiddenArr: string[] = Array.isArray(b.hiddenPhotos) ? b.hiddenPhotos.filter(Boolean) : [];
 
-  const item = await prisma.item.create({
-    data: {
-      code,
-      name,
-      category: b.category || null,
-      description: b.description || null,
-      photo: photoArr.length ? photoArr.join(",") : null,
-      foundLocation: b.foundLocation || null,
-      foundTime: b.foundTime || null,
-      founder: b.founder || me.name,
-      storageLocation,
-      hiddenPhotos: hiddenArr.length ? hiddenArr.join(",") : null,
-      source: b.source || null, // "患者报失" 由报失转入时传
-      registeredBy: b.registeredBy || me.name,
-    },
-  });
-  await audit(req, "register", "item", item.id, { code, name, storageLocation });
+  // 编号有并发竞争，撞 UNIQUE 自动换号重试（见 createItemWithCodeRetry）
+  const item = await createItemWithCodeRetry((code) => ({
+    code,
+    name,
+    category: b.category || null,
+    description: b.description || null,
+    photo: photoArr.length ? photoArr.join(",") : null,
+    foundLocation: b.foundLocation || null,
+    foundTime: b.foundTime || null,
+    founder: b.founder || me.name,
+    storageLocation,
+    hiddenPhotos: hiddenArr.length ? hiddenArr.join(",") : null,
+    source: b.source || null, // "患者报失" 由报失转入时传
+    registeredBy: b.registeredBy || me.name,
+  }));
+  await audit(req, "register", "item", item.id, { code: item.code, name, storageLocation });
   res.json({ ok: true, item: out(item) });
 });
 
@@ -161,6 +159,21 @@ router.put("/:id", async (req, res) => {
   const name = String(b.name || "").trim();
   if (!name) return res.status(400).json({ ok: false, msg: "物品名称不能为空" });
 
+  // 照片可见性：hiddenPhotos 只接受「该物品已有照片」的子集（与 v1 对齐），
+  // 防止传不属于该物品的文件名
+  let hiddenPhotos: string | null | undefined;
+  if (b.hiddenPhotos !== undefined) {
+    const all = new Set(
+      (item.photo || "").split(",").map((s) => s.trim()).filter(Boolean)
+    );
+    const hid = String(b.hiddenPhotos || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const invalid = hid.filter((h) => !all.has(h));
+    if (invalid.length) {
+      return res.status(400).json({ ok: false, msg: "包含不属于该物品的照片，已拒绝保存" });
+    }
+    hiddenPhotos = hid.length ? hid.join(",") : null;
+  }
+
   const updated = await prisma.item.update({
     where: { id },
     data: {
@@ -173,9 +186,8 @@ router.put("/:id", async (req, res) => {
       // 患者报失的捡到人锁定
       founder:
         item.source === "患者报失" ? "患者报失" : (b.founder ?? item.founder),
-      // 照片可见性可事后修改：传空串/null=全部公开，传逗号串=隐藏指定照片
-      hiddenPhotos:
-        b.hiddenPhotos !== undefined ? (b.hiddenPhotos || null) : item.hiddenPhotos,
+      // 照片可见性可事后修改：不传=保持原值，校验过的子集=隐藏指定照片，空串=全部公开
+      hiddenPhotos: hiddenPhotos !== undefined ? hiddenPhotos : item.hiddenPhotos,
     },
   });
   await audit(req, "edit", "item", id, { before: { name: item.name }, after: { name } });
@@ -215,20 +227,30 @@ router.post("/:id/claim", async (req, res) => {
 
   const me = req.authUser!;
   const claimedAt = keep ? (item.claimedAt || parseClaimTime(b.claimedAt)) : parseClaimTime(b.claimedAt);
-  const updated = await prisma.item.update({
-    where: { id },
-    data: {
-      status: "已认领",
-      claimerName,
-      claimerPhone: String(b.claimerPhone || "").trim() || null,
-      claimerGroup: b.claimerGroup || null,
-      claimerGender: b.claimerGender || null,
-      featureVerified: true,
-      claimedAt,
-      operator: me.name,
-      ...(keep ? {} : { claimerPhoto: b.claimerPhoto || null }),
-    },
-  });
+  // 原子认领（与 v1 对齐）：UPDATE 带状态条件，并发提交只有一个能命中，
+  // 其余返回"刚被其他人认领"——不能用先查再改（check-then-act）的写法。
+  const data = {
+    status: "已认领",
+    claimerName,
+    claimerPhone: String(b.claimerPhone || "").trim() || null,
+    claimerGroup: b.claimerGroup || null,
+    claimerGender: b.claimerGender || null,
+    featureVerified: true,
+    claimedAt,
+    operator: me.name,
+    ...(keep ? {} : { claimerPhoto: b.claimerPhoto || null }),
+  };
+  const result = keep
+    ? await prisma.item.updateMany({ where: { id, status: "已认领" }, data })
+    : await prisma.item.updateMany({ where: { id, status: "待认领" }, data });
+  if (result.count === 0) {
+    return res.status(409).json({
+      ok: false,
+      msg: keep ? "该物品认领状态已变化，请刷新后再修改" : "该物品刚被其他人认领，请刷新确认",
+    });
+  }
+  const updated = await prisma.item.findUnique({ where: { id } });
+  if (!updated) return res.status(404).json({ ok: false, msg: "物品不存在" });
   await audit(req, keep ? "edit_claim" : "claim", "item", id, { code: item.code, claimerName, claimedAt });
   res.json({
     ok: true, item: out(updated),

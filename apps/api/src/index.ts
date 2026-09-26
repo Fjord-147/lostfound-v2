@@ -18,6 +18,10 @@ import { errorHandler } from "./middleware/errorHandler";
 ensureUploadDirs();
 
 const app = express();
+// nginx 反代部署：信任第一层代理，req.ip 才能取到真实访客 IP。
+// 否则所有请求都是 127.0.0.1，上传/报失限流对全站只算一个桶（生产事故级 bug）。
+// ECS 安全组只放行 nginx 的对外端口、API 端口不对外开放时，直连伪造 XFF 的风险可控。
+app.set("trust proxy", 1);
 // 安全响应头（与兄弟项目对齐；CSP 关闭以免拦 Next.js 内联脚本，其余全开）
 app.use(helmet({ contentSecurityPolicy: false }));
 // 跨域白名单：只允许生产域名与本地开发地址携带cookie跨域调接口。

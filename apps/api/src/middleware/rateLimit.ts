@@ -46,6 +46,36 @@ export function ipUploadQuota(windowMs = 10 * 60_000, maxFiles = 3) {
   };
 }
 
+/** 登录失败限流（与 v1 对齐）：同一 key 在 windowMs 内失败达 max 次后拒绝，
+ *  成功登录不占名额；达到上限后连正确密码也暂时拒登（防爆破）。
+ *  用法：key = `${ip}:${username}`。 */
+export function loginFailLimiter(windowMs = 10 * 60_000, max = 5) {
+  const fails = new Map<string, number[]>();
+  let lastSweep = 0;
+  function prune(now: number) {
+    if (now - lastSweep < 60_000) return;
+    lastSweep = now;
+    for (const [k, arr] of fails) {
+      const alive = arr.filter((t) => t > now - windowMs);
+      if (alive.length) fails.set(k, alive);
+      else fails.delete(k);
+    }
+  }
+  return {
+    isBlocked(key: string): boolean {
+      const now = Date.now();
+      prune(now);
+      return (fails.get(key) || []).filter((t) => t > now - windowMs).length >= max;
+    },
+    recordFail(key: string) {
+      const now = Date.now();
+      const arr = fails.get(key) || [];
+      arr.push(now);
+      fails.set(key, arr);
+    },
+  };
+}
+
 /** 按请求数限流（防脚本刷表单）：每 windowMs 最多 max 次 */
 export function ipRateLimit(windowMs = 3600_000, max = 10) {
   const local = new Map<string, Bucket>();

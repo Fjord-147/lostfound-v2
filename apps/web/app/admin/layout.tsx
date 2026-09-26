@@ -46,9 +46,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
   }, []);
 
-  async function logout() {
+  async function logout(redirectTo: string) {
     await api("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    router.push(redirectTo);
   }
 
   return (
@@ -86,9 +86,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="border-t border-white/15 px-4 py-3 text-[13px]">
           <div className="mb-1 text-white/60">当前</div>
           <div className="text-[15px] font-semibold">{me?.name || "..."}</div>
-          <button onClick={logout} className="mt-2 text-white/80 hover:text-white">
-            退出登录
-          </button>
+          <div className="mt-2 flex gap-4">
+            <button onClick={() => logout("/login")} className="text-white/80 hover:text-white" title="交接班快速切换账号">
+              🔄 换人
+            </button>
+            <button onClick={() => logout("/")} className="text-white/80 hover:text-white">
+              ⏻ 退出
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -117,9 +122,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
         ))}
         <button
-          onClick={logout}
+          onClick={() => logout("/")}
           className="flex flex-1 flex-col items-center justify-center gap-0.5 border-l border-white/20 text-[10px] text-white/85"
-          title="退出登录"
+          title="退出并返回公众首页"
         >
           <span className="text-lg">⏻</span>
           退出

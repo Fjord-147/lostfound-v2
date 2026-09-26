@@ -55,6 +55,16 @@ export default function PublicHome() {
         </Link>
       </div>
 
+      {/* 辅助入口：查进度 + 帮助 */}
+      <div className="mb-5 grid grid-cols-2 gap-2.5">
+        <Link href="/my-reports" className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[13px] font-medium text-slate-600 no-underline transition hover:border-brand hover:text-brand">
+          🔎 查询我的报失
+        </Link>
+        <Link href="/help" className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[13px] font-medium text-slate-600 no-underline transition hover:border-brand hover:text-brand">
+          ❓ 使用帮助
+        </Link>
+      </div>
+
       {/* 类别筛选 */}
       <div id="list" className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
         <button onClick={() => setCat("")}
@@ -109,7 +119,8 @@ export default function PublicHome() {
 
       <footer className="mt-8 border-t border-slate-200 py-5 text-center text-xs text-slate-400">
         苏州和康中医医院 · 导医台失物招领服务<br />
-        捡到物品请交到导医台 · 认领请本人到场核对
+        捡到物品请交到导医台 · 认领请本人到场核对<br />
+        <Link href="/help" className="text-brand">使用帮助</Link> · <Link href="/my-reports" className="text-brand">查询我的报失</Link>
       </footer>
     </div>
   );

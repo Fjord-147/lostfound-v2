@@ -55,11 +55,11 @@ export default function LoginPage() {
         <form onSubmit={submit}>
           <div className="mb-4">
             <label className="lbl">账号</label>
-            <input className="inp" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required />
+            <input className="inp" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" required />
           </div>
           <div className="mb-6">
             <label className="lbl">密码</label>
-            <input ref={pwdRef} className="inp" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <input ref={pwdRef} className="inp" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
           </div>
           <button className="btn w-full" disabled={loading}>
             {loading ? "登录中..." : "登录"}

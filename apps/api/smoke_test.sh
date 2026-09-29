@@ -1,7 +1,9 @@
 #!/bin/bash
 # lostfound-v2 冒烟测试：起测试实例 → 12 项验证 → 关闭。只打测试库 lostfound_smoke。
 cd "$(dirname "$0")"
-export DATABASE_URL="postgresql://lostfound:lostfound@localhost:5432/lostfound_smoke"
+# 从 .env 读真实连接串，仅替换库名（密码不硬编码在脚本里）
+SRC_DB_URL=$(grep -oP '^DATABASE_URL="\K[^"]+' .env)
+export DATABASE_URL="${SRC_DB_URL%/*}/lostfound_smoke"
 export API_PORT=8010
 export JWT_SECRET=smoke-test-secret
 ./node_modules/.bin/tsx src/index.ts > /tmp/v2_smoke_server.log 2>&1 &

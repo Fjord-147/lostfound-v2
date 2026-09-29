@@ -89,6 +89,9 @@ pm2 save && pm2 startup
 psql -d postgres -c "CREATE DATABASE lostfound_smoke OWNER lostfound;"
 DATABASE_URL=postgresql://lostfound:<密码>@localhost:5432/lostfound_smoke \
   pnpm --filter @lostfound/api exec prisma migrate deploy
+SEED_USERNAME=smokeadmin SEED_PASSWORD=smoke123 SEED_NAME=冒烟管理员 \
+DATABASE_URL=postgresql://lostfound:<密码>@localhost:5432/lostfound_smoke \
+  pnpm --filter @lostfound/api exec tsx prisma/seed.ts
 
 # 跑测试（自动起 8010 测试实例、跑完自毁）
 bash apps/api/smoke_test.sh

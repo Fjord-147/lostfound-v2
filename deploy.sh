@@ -29,8 +29,6 @@ echo "首页 HTTP $HTTP / API ok=$API / 进程 online=$ONLINE/2"
 [ "$HTTP" = "200" ] || FAIL=1
 [ "$API" -ge 1 ] || FAIL=1
 [ "$ONLINE" = "2" ] || FAIL=1
-curl -s --max-time 10 http://127.0.0.1:8082/api/public/items | grep -q ok:true && echo "API OK" || { echo "API 异常"; FAIL=1; }
-pm2 list | grep -E "lostfound-(api|web)" | grep -q online || { echo "进程未全部 online"; FAIL=1; }
 
 if [ "$FAIL" = "0" ]; then
   echo "===== 部署成功 ====="

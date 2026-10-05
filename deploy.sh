@@ -16,7 +16,16 @@ pnpm --filter @lostfound/api exec prisma migrate deploy
 echo "=== 4/6 构建前端 ==="
 pnpm --filter @lostfound/web build
 
-echo "=== 5/6 重启服务 ==="
+echo "=== 5/6 重启服务（先清端口孤儿，防 EADDRINUSE 崩溃循环）==="
+for PORT in 8000 3002; do
+  ss -tlnp 2>/dev/null | grep ":$PORT " | grep -oP 'pid=\K[0-9]+' | sort -u | while read -r P; do
+    if [ -n "$P" ] && ! pm2 pid lostfound-api 2>/dev/null | grep -q "^$P$" && ! pm2 pid lostfound-web 2>/dev/null | grep -q "^$P$"; then
+      echo "  清理占用 $PORT 的孤儿进程 pid=$P"
+      kill -9 "$P" 2>/dev/null || true
+    fi
+  done
+done
+sleep 1
 pm2 restart lostfound-api lostfound-web
 echo "=== 6/6 健康检查（最多等 30 秒，服务预热有重试）==="
 FAIL=0

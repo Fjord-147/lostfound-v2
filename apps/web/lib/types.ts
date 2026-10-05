@@ -53,6 +53,9 @@ export const CATEGORY_ICONS: Record<string, string> = {
   衣物: "👕", "病历/检查单": "📄", "水杯/雨伞": "☂️", 其他: "📦",
 };
 
+// 高价值类别：认领必须现场拍摄认领人照片（与后端 config.ts 保持一致）
+export const HIGH_VALUE_CATEGORIES = ["证件", "手机/电子产品", "钱包"];
+
 // 卡片类别浅色（延续 v1）
 export const CATEGORY_STYLE: Record<string, { bg: string; border: string }> = {
   证件: { bg: "#fdedee", border: "#f5c2c7" },

@@ -43,6 +43,7 @@ model Item {
   claimedAt       String?  @map("claimed_at") // 认领时间（可手填历史时间）
   operator        String? // 经办人（真名）
   claimerPhoto    String?  @map("claimer_photo") // 认领人照片（老人留照备查）
+  claimerNote     String?  @map("claimer_note") // 认领人自述特征（≥10字，防冒领留痕，公众端不可见）
   claimerGroup    String?  @map("claimer_group") // 人群：老人/小孩/青年/中年/其他
   claimerGender   String?  @map("claimer_gender") // 性别：男/女
   storageLocation String?  @map("storage_location") // 存放位置（必填）

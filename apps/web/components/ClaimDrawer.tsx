@@ -1,10 +1,12 @@
 "use client";
-// 认领抽屉：搜索定位 → 详情（照片可放大）→ 认领表单（姓名*电话选填+确认、人群、性别、认领时间、认领人照片）
+// 认领抽屉：搜索定位 → 详情（照片可放大）→ 认领表单
+// 防冒领：电话必填(11位手机号) / 自述特征≥10字 / 高价值类别强制拍照 /
+//          患者报失手机号不一致需勾选原因 / 无特征物品提示补录
 import { useEffect, useState } from "react";
 import { Drawer, toast, PhotoZoom } from "./ui";
 import PhotoPicker, { PickedPhoto } from "./PhotoPicker";
 import { api, uploadFiles, dataUrlToBlob } from "@/lib/api";
-import { photosOf, nowLocalStr, CATEGORY_ICONS } from "@/lib/types";
+import { photosOf, nowLocalStr, CATEGORY_ICONS, HIGH_VALUE_CATEGORIES } from "@/lib/types";
 
 export default function ClaimDrawer({
   open,
@@ -22,28 +24,33 @@ export default function ClaimDrawer({
   const [q, setQ] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [target, setTarget] = useState<any>(null);
+  const [reportPhone, setReportPhone] = useState<string | null>(null);
   const [claimerName, setClaimerName] = useState("");
   const [claimerPhone, setClaimerPhone] = useState("");
+  const [claimerNote, setClaimerNote] = useState("");
   const [group, setGroup] = useState("");
   const [gender, setGender] = useState("");
   const [claimedAt, setClaimedAt] = useState(nowLocalStr());
   const [verified, setVerified] = useState(false);
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
+  const [descTopUp, setDescTopUp] = useState(""); // 无特征物品：认领时补录登记特征
+  const [mismatchReason, setMismatchReason] = useState("");
+  const [mismatchNote, setMismatchNote] = useState("");
   const [zoom, setZoom] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // 打开时重置；带 targetId 直接加载
   useEffect(() => {
     if (!open) return;
-    setQ(""); setResults([]); setTarget(null); setClaimerName("");
-    setClaimerPhone(""); setGroup(""); setGender(""); setVerified(false);
-    setPhotos([]); setClaimedAt(nowLocalStr());
+    setQ(""); setResults([]); setTarget(null); setReportPhone(null); setClaimerName("");
+    setClaimerPhone(""); setClaimerNote(""); setGroup(""); setGender(""); setVerified(false);
+    setPhotos([]); setClaimedAt(nowLocalStr()); setDescTopUp(""); setMismatchReason(""); setMismatchNote("");
     if (targetId) loadItem(targetId);
   }, [open, targetId]);
 
   async function loadItem(id: number) {
     const d = await api(`/api/items/${id}`);
-    if (d.ok) setTarget(d.item);
+    if (d.ok) { setTarget(d.item); setReportPhone(d.reportPhone || null); }
   }
 
   async function search() {
@@ -60,6 +67,12 @@ export default function ClaimDrawer({
     e.preventDefault();
     if (!target) return;
     if (!verified) return toast("请勾选已核对物品特征", "error");
+    // 前端先行校验（后端有同款真闸门，这里只是友好提示）
+    if (!/^1[3-9]\d{9}$/.test(claimerPhone.trim())) return toast("请填写认领人11位手机号（仅收手机号码）", "error");
+    if (claimerNote.trim().length < 10) return toast("请填写认领人自述特征（至少10个字）", "error");
+    if (highValue && photos.length === 0) return toast(`「${target.category}」类物品必须现场拍摄认领人照片`, "error");
+    if (mismatchNeeded && !mismatchReason) return toast("认领手机号与报失手机号不一致，请勾选原因", "error");
+    if (mismatchReason === "其他" && mismatchNote.trim().length < 2) return toast("选择「其他」请填写具体说明", "error");
     setSubmitting(true);
     try {
       let claimerPhoto: string | undefined;
@@ -74,7 +87,9 @@ export default function ClaimDrawer({
         method: "POST",
         body: JSON.stringify({
           claimerName, claimerPhone, claimerGroup: group, claimerGender: gender,
-          claimedAt, featureVerified: verified, claimerPhoto,
+          claimedAt, featureVerified: verified, claimerPhoto, claimerNote,
+          ...(descTopUp.trim().length >= 5 ? { description: descTopUp.trim() } : {}),
+          ...(mismatchNeeded ? { claimMismatchReason: mismatchReason, claimMismatchNote: mismatchNote.trim() || undefined } : {}),
         }),
       });
       if (d.ok) {
@@ -89,6 +104,10 @@ export default function ClaimDrawer({
   }
 
   const tps = target ? photosOf(target) : [];
+  const highValue = !!target && HIGH_VALUE_CATEGORIES.includes(target.category || "");
+  // 患者报失来源：认领号码与报失号码不一致 → 软拦截（后端强制，前端提示）
+  const mismatchNeeded =
+    !!target && target.source === "患者报失" && !!reportPhone && claimerPhone.trim() !== "" && claimerPhone.trim() !== reportPhone;
 
   return (
     <Drawer open={open} onClose={onClose} title="🔍 认领登记">
@@ -176,8 +195,8 @@ export default function ClaimDrawer({
               <input className="inp" value={claimerName} onChange={(e) => setClaimerName(e.target.value)} required />
             </div>
             <div>
-              <label className="lbl">认领人电话</label>
-              <input className="inp" value={claimerPhone} onChange={(e) => setClaimerPhone(e.target.value)} placeholder="选填" />
+              <label className="lbl">认领人手机号 <span className="text-red-600">*</span></label>
+              <input className="inp" value={claimerPhone} onChange={(e) => setClaimerPhone(e.target.value)} inputMode="numeric" placeholder="11位手机号（谁领填谁的）" required />
             </div>
             <div>
               <label className="lbl">人群</label>
@@ -196,21 +215,54 @@ export default function ClaimDrawer({
             </div>
           </div>
           <div className="mt-3.5">
+            <label className="lbl">认领人自述特征 <span className="text-red-600">*</span> <span className="text-xs font-normal text-slate-400">（至少10字：颜色/品牌/内含物/磨损点，需与登记特征一致）</span></label>
+            <textarea className="inp min-h-[70px]" value={claimerNote} onChange={(e) => setClaimerNote(e.target.value)} placeholder="如：蓝色折叠伞，伞柄缠了黄色胶带，伞面右下角有磨损" />
+          </div>
+          {/* 无特征物品：提醒并允许认领时补录 */}
+          {!target.description && (
+            <div className="mt-3.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+              <div className="text-[13px] font-semibold text-amber-800">⚠️ 该物品登记时未留特征描述</div>
+              <div className="mb-1.5 mt-0.5 text-xs text-amber-700">建议现场问清物品特征补录后再核对认领（补录会存入登记信息）。</div>
+              <textarea className="inp min-h-[60px]" value={descTopUp} onChange={(e) => setDescTopUp(e.target.value)} placeholder="补录登记特征（至少5字）" />
+            </div>
+          )}
+          {/* 患者报失：号码不一致软拦截 */}
+          {mismatchNeeded && (
+            <div className="mt-3.5 rounded-lg border border-orange-300 bg-orange-50 px-3 py-2.5">
+              <div className="text-[13px] font-semibold text-orange-800">⚠️ 认领手机号与报失手机号（{reportPhone}）不一致</div>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {["家属代领", "报失号码已换", "其他"].map((r) => (
+                  <label key={r} className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] ${mismatchReason === r ? "border-orange-500 bg-white font-semibold text-orange-700" : "border-orange-200 bg-white/60 text-slate-600"}`}>
+                    <input type="radio" className="hidden" checked={mismatchReason === r} onChange={() => setMismatchReason(r)} />
+                    {r}
+                  </label>
+                ))}
+              </div>
+              {mismatchReason === "其他" && (
+                <input className="inp mt-2" value={mismatchNote} onChange={(e) => setMismatchNote(e.target.value)} placeholder="请填写具体说明" />
+              )}
+              <div className="mt-1.5 text-xs text-orange-600">选择原因并提交后，系统会记录此次不一致，请当面核实身份。</div>
+            </div>
+          )}
+          <div className="mt-3.5">
             <label className="lbl">认领时间</label>
             <input type="datetime-local" className="inp" value={claimedAt} onChange={(e) => setClaimedAt(e.target.value)} />
           </div>
           <label className="mt-3.5 flex cursor-pointer items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm">
             <input type="checkbox" className="h-5 w-5" checked={verified} onChange={(e) => setVerified(e.target.checked)} />
-            <span>我已核对物品特征无误{claimerPhone.trim() ? "" : "（未填电话请再次确认失主身份）"}</span>
+            <span>我已核对物品特征无误</span>
           </label>
           <div className="mt-3.5">
-            <label className="lbl">认领人照片 <span className="text-xs font-normal text-slate-400">（选填，老人等记不清电话时可留照备查）</span></label>
+            <label className="lbl">
+              认领人照片 {highValue ? <span className="text-red-600">*</span> : <span className="text-xs font-normal text-slate-400">（选填）</span>}
+              {highValue && <span className="text-xs font-normal text-slate-400">　「{target.category}」类物品必须现场拍照</span>}
+            </label>
             <PhotoPicker photos={photos} setPhotos={setPhotos} allowHide={false} />
           </div>
           <button className="btn mt-4 w-full" disabled={submitting}>
             {submitting ? "提交中..." : "✓ 确认认领"}
           </button>
-          <div className="mt-2 text-center text-xs text-slate-400">不传照片也能正常认领</div>
+          {!highValue && <div className="mt-2 text-center text-xs text-slate-400">普通物品不传照片也能正常认领</div>}
         </form>
       )}
 

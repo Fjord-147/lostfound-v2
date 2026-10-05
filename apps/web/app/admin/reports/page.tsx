@@ -6,7 +6,7 @@ import { CATEGORY_ICONS, fmtDT } from "@/lib/types";
 import { toast, ConfirmDanger, PhotoZoom, Drawer } from "@/components/ui";
 import PhotoPicker, { PickedPhoto } from "@/components/PhotoPicker";
 import { uploadFiles, dataUrlToBlob } from "@/lib/api";
-import { nowLocalStr } from "@/lib/types";
+import { nowLocalStr, HIGH_VALUE_CATEGORIES } from "@/lib/types";
 
 const STATUSES = ["待查找", "已登记", "已找到", "已忽略"];
 
@@ -141,23 +141,35 @@ export default function ReportsPage() {
 function FoundClaimDrawer({ rep, me, onClose, onDone }: { rep: any; me: string; onClose: () => void; onDone: (msg: string) => void }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [note, setNote] = useState("");
   const [group, setGroup] = useState("");
   const [gender, setGender] = useState("");
   const [time, setTime] = useState(nowLocalStr());
   const [verified, setVerified] = useState(false);
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
+  const [mismatchReason, setMismatchReason] = useState("");
+  const [mismatchNote, setMismatchNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (rep) {
       setName(rep.ownerName || ""); setPhone(rep.ownerPhone || "");
-      setGroup(""); setGender(""); setVerified(false); setPhotos([]); setTime(nowLocalStr());
+      setNote(""); setGroup(""); setGender(""); setVerified(false); setPhotos([]); setTime(nowLocalStr());
+      setMismatchReason(""); setMismatchNote("");
     }
   }, [rep]);
+
+  const highValue = HIGH_VALUE_CATEGORIES.includes(rep?.itemCategory || "");
+  const mismatchNeeded = !!rep && !!phone.trim() && phone.trim() !== rep.ownerPhone;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!verified) return toast("请勾选已核对物品特征", "error");
+    if (!/^1[3-9]\d{9}$/.test(phone.trim())) return toast("请填写认领人11位手机号（仅收手机号码）", "error");
+    if (note.trim().length < 10) return toast("请填写认领人自述特征（至少10个字）", "error");
+    if (highValue && photos.length === 0) return toast(`「${rep.itemCategory}」类物品必须现场拍摄认领人照片`, "error");
+    if (mismatchNeeded && !mismatchReason) return toast("认领手机号与报失手机号不一致，请勾选原因", "error");
+    if (mismatchReason === "其他" && mismatchNote.trim().length < 2) return toast("选择「其他」请填写具体说明", "error");
     setSubmitting(true);
     try {
       let claimerPhoto: string | undefined;
@@ -167,7 +179,11 @@ function FoundClaimDrawer({ rep, me, onClose, onDone }: { rep: any; me: string; 
       }
       const d = await api(`/api/reports/${rep.id}/found-claim`, {
         method: "POST",
-        body: JSON.stringify({ claimerName: name, claimerPhone: phone, claimerGroup: group, claimerGender: gender, claimedAt: time, featureVerified: verified, claimerPhoto }),
+        body: JSON.stringify({
+          claimerName: name, claimerPhone: phone, claimerGroup: group, claimerGender: gender,
+          claimedAt: time, featureVerified: verified, claimerPhoto, claimerNote: note,
+          ...(mismatchNeeded ? { claimMismatchReason: mismatchReason, claimMismatchNote: mismatchNote.trim() || undefined } : {}),
+        }),
       });
       if (d.ok) onDone(d.msg); else toast(d.msg, "error");
     } catch (e: any) {
@@ -197,7 +213,7 @@ function FoundClaimDrawer({ rep, me, onClose, onDone }: { rep: any; me: string; 
       <form onSubmit={submit}>
         <div className="grid grid-cols-2 gap-3.5">
           <div><label className="lbl">认领人姓名 *</label><input className="inp" value={name} onChange={(e) => setName(e.target.value)} required /></div>
-          <div><label className="lbl">电话</label><input className="inp" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+          <div><label className="lbl">手机号 *</label><input className="inp" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="numeric" placeholder="11位手机号" required /></div>
           <div><label className="lbl">人群</label>
             <select className="inp" value={group} onChange={(e) => setGroup(e.target.value)}>
               <option value="">请选择</option>{["老人", "小孩", "青年", "中年", "其他"].map((g) => <option key={g}>{g}</option>)}
@@ -207,13 +223,32 @@ function FoundClaimDrawer({ rep, me, onClose, onDone }: { rep: any; me: string; 
               <option value="">请选择</option><option value="男">男士</option><option value="女">女士</option>
             </select></div>
         </div>
+        <div className="mt-3.5"><label className="lbl">认领人自述特征 * <span className="text-xs font-normal text-slate-400">（至少10字，需与报失特征一致）</span></label>
+          <textarea className="inp min-h-[70px]" value={note} onChange={(e) => setNote(e.target.value)} placeholder="如：黑色钱包，内有医保卡和五十元现金，边角有磨损" /></div>
+        {mismatchNeeded && (
+          <div className="mt-3.5 rounded-lg border border-orange-300 bg-orange-50 px-3 py-2.5">
+            <div className="text-[13px] font-semibold text-orange-800">⚠️ 认领手机号与报失手机号（{rep.ownerPhone}）不一致</div>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {["家属代领", "报失号码已换", "其他"].map((r) => (
+                <label key={r} className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] ${mismatchReason === r ? "border-orange-500 bg-white font-semibold text-orange-700" : "border-orange-200 bg-white/60 text-slate-600"}`}>
+                  <input type="radio" className="hidden" checked={mismatchReason === r} onChange={() => setMismatchReason(r)} />
+                  {r}
+                </label>
+              ))}
+            </div>
+            {mismatchReason === "其他" && (
+              <input className="inp mt-2" value={mismatchNote} onChange={(e) => setMismatchNote(e.target.value)} placeholder="请填写具体说明" />
+            )}
+          </div>
+        )}
         <div className="mt-3.5"><label className="lbl">认领时间</label><input type="datetime-local" className="inp" value={time} onChange={(e) => setTime(e.target.value)} /></div>
         <label className="mt-3.5 flex cursor-pointer items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm">
           <input type="checkbox" className="h-5 w-5" checked={verified} onChange={(e) => setVerified(e.target.checked)} />
           <span>我已核对物品特征无误</span>
         </label>
         <div className="mt-3.5">
-          <label className="lbl">认领人照片 <span className="text-xs font-normal text-slate-400">（选填）</span></label>
+          <label className="lbl">认领人照片 {highValue ? <span className="text-red-600">*</span> : <span className="text-xs font-normal text-slate-400">（选填）</span>}
+            {highValue && <span className="text-xs font-normal text-slate-400">　「{rep.itemCategory}」类物品必须现场拍照</span>}</label>
           <PhotoPicker photos={photos} setPhotos={setPhotos} allowHide={false} />
         </div>
         <button className="btn mt-4 w-full" disabled={submitting}>{submitting ? "提交中..." : "✓ 确认已找到并认领"}</button>

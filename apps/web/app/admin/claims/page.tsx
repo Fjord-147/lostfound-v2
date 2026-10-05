@@ -53,7 +53,7 @@ export default function ClaimsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-brand-light text-left text-brand-dark">
-                {["编号", "名称", "认领人", "电话", "人群/性别", "认领时间", "经办人", "操作"].map((h) => (
+                {["编号", "名称", "认领人", "电话", "自述特征", "人群/性别", "认领时间", "经办人", "操作"].map((h) => (
                   <th key={h} className="whitespace-nowrap px-3 py-2.5 font-semibold">{h}</th>
                 ))}
               </tr>
@@ -65,6 +65,7 @@ export default function ClaimsPage() {
                   <td className="px-3 py-2 font-medium">{it.name}</td>
                   <td className="px-3 py-2">{it.claimerName}</td>
                   <td className="whitespace-nowrap px-3 py-2">{it.claimerPhone || "未留"}</td>
+                  <td className="max-w-[220px] truncate px-3 py-2 text-slate-500" title={it.claimerNote || ""}>{it.claimerNote || "—"}</td>
                   <td className="whitespace-nowrap px-3 py-2">{it.claimerGroup || "—"}/{it.claimerGender || "—"}</td>
                   <td className="whitespace-nowrap px-3 py-2">{it.claimedAt}</td>
                   <td className="whitespace-nowrap px-3 py-2">{it.operator || "—"}</td>
@@ -110,6 +111,7 @@ export default function ClaimsPage() {
                 <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1 rounded-md bg-white p-3 text-[13px]">
                   <div><span className="text-slate-500">认领人：</span>{it.claimerName}</div>
                   <div><span className="text-slate-500">电话：</span>{it.claimerPhone || "未留"}</div>
+                  <div className="col-span-2"><span className="text-slate-500">自述特征：</span>{it.claimerNote || "—"}</div>
                   <div><span className="text-slate-500">人群：</span>{it.claimerGroup || "未选"}</div>
                   <div><span className="text-slate-500">性别：</span>{it.claimerGender || "未选"}</div>
                   <div><span className="text-slate-500">认领时间：</span>{it.claimedAt}</div>

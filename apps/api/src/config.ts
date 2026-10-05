@@ -21,6 +21,9 @@ export const CATEGORY_ICONS: Record<string, string> = {
   "衣物": "👕", "病历/检查单": "📄", "水杯/雨伞": "☂️", "其他": "📦",
 };
 
+// 高价值类别：认领时必须现场拍摄认领人照片（防冒领追溯）
+export const HIGH_VALUE_CATEGORIES = ["证件", "手机/电子产品", "钱包"];
+
 export const LOCATIONS = [
   "一楼导诊台", "一楼大厅", "二楼检验科", "二楼候诊区", "三楼诊室",
   "挂号收费处", "药房", "卫生间", "停车场", "其他",

@@ -44,21 +44,29 @@ CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/auth/login -H 'Cont
 # 5 正常登录拿 cookie
 curl -s -c /tmp/v2_cookie.txt -X POST $B/api/auth/login -H 'Content-Type: application/json' -H 'X-Forwarded-For: 9.9.9.9' -d '{"username":"smokeadmin","password":"smoke123"}' | grep -q '"ok":true' && ok "5 正常登录" || bad "5 正常登录" "见cookie文件"
 
-# 6 登记带公式注入名称的物品
+# 6 登记带公式注入名称的物品（特征描述必填，见 6b）
 R=$(curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items -H 'Content-Type: application/json' \
-  -d '{"name":"=HYPERLINK(\"http://evil.example\",\"点我\")","category":"其他","storageLocation":"导诊台1号抽屉"}')
+  -d '{"name":"=HYPERLINK(\"http://evil.example\",\"点我\")","category":"其他","description":"测试特征描述，含公式注入名称的物品","storageLocation":"导诊台1号抽屉"}')
 echo "$R" | grep -q '"ok":true' && ok "6 登记特殊名称物品" || bad "6 登记物品" "$R"
+
+# 6b 特征描述必填（A 方案）：<5字或无描述 → 400
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/api/items -H 'Content-Type: application/json' \
+  -d '{"name":"无特征物品","category":"其他","description":"太短","storageLocation":"导诊台"}')
+[ "$CODE" = "400" ] && ok "6b 特征描述<5字被拒(400)" || bad "6b 特征必填" "HTTP $CODE"
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/api/items -H 'Content-Type: application/json' \
+  -d '{"name":"无特征物品2","category":"其他","storageLocation":"导诊台"}')
+[ "$CODE" = "400" ] && ok "6c 缺特征描述被拒(400)" || bad "6c 特征必填" "HTTP $CODE"
 
 # 7 hiddenPhotos 非子集被拒
 ID=$(curl -s -b /tmp/v2_cookie.txt "$B/api/items?q=HYPERLINK" | python3 -c "import sys,json;print(json.load(sys.stdin)['items'][0]['id'])")
 CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X PUT $B/api/items/$ID -H 'Content-Type: application/json' -d '{"name":"=HYPERLINK(\"http://evil.example\",\"点我\")","hiddenPhotos":"not_a_photo.jpg"}')
 [ "$CODE" = "400" ] && ok "7 hiddenPhotos 非子集被拒(400)" || bad "7 hiddenPhotos 校验" "HTTP $CODE"
 
-# 8 认领并发竞态：两个并发认领只能成一个
-curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items -H 'Content-Type: application/json' -d '{"name":"并发测试物","storageLocation":"导诊台"}' > /dev/null
+# 8 认领并发竞态：两个并发认领只能成一个（D/B：带手机号+自述特征）
+curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items -H 'Content-Type: application/json' -d '{"name":"并发测试物","category":"其他","description":"并发测试用的普通物品特征","storageLocation":"导诊台"}' > /dev/null
 ID2=$(curl -s -b /tmp/v2_cookie.txt -G "$B/api/items" --data-urlencode "q=并发测试" | python3 -c "import sys,json;print(json.load(sys.stdin)['items'][0]['id'])")
-curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items/$ID2/claim -H 'Content-Type: application/json' -d '{"claimerName":"甲","featureVerified":true}' > /tmp/claim_a.json & PA=$!
-curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items/$ID2/claim -H 'Content-Type: application/json' -d '{"claimerName":"乙","featureVerified":true}' > /tmp/claim_b.json & PB=$!
+curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items/$ID2/claim -H 'Content-Type: application/json' -d '{"claimerName":"甲","claimerPhone":"13800000001","claimerNote":"甲认领的自述特征描述，十个字以上","featureVerified":true}' > /tmp/claim_a.json & PA=$!
+curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items/$ID2/claim -H 'Content-Type: application/json' -d '{"claimerName":"乙","claimerPhone":"13800000002","claimerNote":"乙认领的自述特征描述，十个字以上","featureVerified":true}' > /tmp/claim_b.json & PB=$!
 wait $PA $PB   # 注意：必须显式指定 PID，裸 wait 会连常驻的 API 服务器一起等
 OKS=$(grep -l '"ok":true' /tmp/claim_a.json /tmp/claim_b.json | wc -l | tr -d ' ')
 FAILS=$(grep -l '"ok":false' /tmp/claim_a.json /tmp/claim_b.json | wc -l | tr -d ' ')
@@ -67,6 +75,20 @@ if [ "$OKS" = "1" ] && [ "$FAILS" = "1" ]; then
 else
   bad "8 认领并发" "成功=$OKS 拒绝=$FAILS a=$(cat /tmp/claim_a.json) b=$(cat /tmp/claim_b.json)"
 fi
+
+# 8b-8e 防冒领校验（D/B）：缺电话/座机/自述太短/高价值无照片 → 400
+curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items -H 'Content-Type: application/json' -d '{"name":"校验测试物品","category":"其他","description":"防冒领校验用的普通物品特征描述","storageLocation":"导诊台"}' > /dev/null
+IDV=$(curl -s -b /tmp/v2_cookie.txt -G "$B/api/items" --data-urlencode "q=校验测试" | python3 -c "import sys,json;print(json.load(sys.stdin)['items'][0]['id'])")
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/api/items/$IDV/claim -H 'Content-Type: application/json' -d '{"claimerName":"丙","claimerNote":"丙的自述特征描述，十个字以上","featureVerified":true}')
+[ "$CODE" = "400" ] && ok "8b 缺手机号被拒(400)" || bad "8b 电话必填" "HTTP $CODE"
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/api/items/$IDV/claim -H 'Content-Type: application/json' -d '{"claimerName":"丙","claimerPhone":"0512-12345678","claimerNote":"丙的自述特征描述，十个字以上","featureVerified":true}')
+[ "$CODE" = "400" ] && ok "8c 座机号被拒(400，仅收11位手机)" || bad "8c 手机格式" "HTTP $CODE"
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/api/items/$IDV/claim -H 'Content-Type: application/json' -d '{"claimerName":"丙","claimerPhone":"13800000003","claimerNote":"太短","featureVerified":true}')
+[ "$CODE" = "400" ] && ok "8d 自述特征<10字被拒(400)" || bad "8d 自述必填" "HTTP $CODE"
+curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items -H 'Content-Type: application/json' -d '{"name":"身份证一张","category":"证件","description":"证件类高价值物品校验用特征","storageLocation":"保险柜"}' > /dev/null
+IDH=$(curl -s -b /tmp/v2_cookie.txt -G "$B/api/items" --data-urlencode "q=身份证" | python3 -c "import sys,json;print(json.load(sys.stdin)['items'][0]['id'])")
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/api/items/$IDH/claim -H 'Content-Type: application/json' -d '{"claimerName":"丁","claimerPhone":"13800000004","claimerNote":"丁的自述特征描述，十个字以上","featureVerified":true}')
+[ "$CODE" = "400" ] && ok "8e 高价值类别无照片被拒(400)" || bad "8e 高价值拍照" "HTTP $CODE"
 
 # 9 报失→登记入总表→撤销登记 闭环
 curl -s -X POST $B/api/public/report -H 'Content-Type: application/json' -H 'X-Forwarded-For: 5.5.5.5' \
@@ -81,6 +103,17 @@ echo "$R" | grep -q '待查找' && ok "9c 报失恢复待查找" || bad "9c 状�
 # 重复撤销应被拒
 CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/api/reports/$RID/undo-register -H 'Content-Type: application/json' -d '{}')
 [ "$CODE" = "400" ] && ok "9d 重复撤销被拒(400)" || bad "9d 重复撤销" "HTTP $CODE"
+
+# 9e-9f 报失-认领手机号软拦截（C 方案）：不一致需勾选原因，含原因放行并留档
+R=$(curl -s -b /tmp/v2_cookie.txt -X POST $B/api/reports/$RID/register -H 'Content-Type: application/json' -d '{}')
+echo "$R" | grep -q '"ok":true' && ok "9e 重新登记入总表" || bad "9e 重新登记" "$R"
+ID3=$(echo "$R" | python3 -c "import sys,json;print(json.load(sys.stdin)['itemId'])")
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/api/items/$ID3/claim -H 'Content-Type: application/json' \
+  -d '{"claimerName":"路人甲","claimerPhone":"13900001111","claimerNote":"冒领测试的自述特征，十个字以上","featureVerified":true}')
+[ "$CODE" = "400" ] && ok "9f 号码不一致无原因被拒(400，软拦截)" || bad "9f 软拦截" "HTTP $CODE"
+R=$(curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items/$ID3/claim -H 'Content-Type: application/json' \
+  -d '{"claimerName":"失主儿子","claimerPhone":"13900001111","claimerNote":"家属代领的自述特征，十个字以上","featureVerified":true,"claimMismatchReason":"家属代领"}')
+echo "$R" | grep -q '"ok":true' && echo "$R" | grep -q 'claimerNote' && ok "9g 选原因后放行且自述特征已存档" || bad "9g 放行+存档" "$R"
 
 # 10 导出 Excel：魔数 PK + 公式注入被中和
 curl -s -b /tmp/v2_cookie.txt -o /tmp/v2_export.xlsx "$B/api/stats/export"

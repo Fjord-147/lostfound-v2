@@ -7,7 +7,7 @@ import { requireAuth } from "../middleware/auth";
 import { audit } from "../middleware/audit";
 import { createItemWithCodeRetry } from "../services/code";
 import { normDate } from "../services/sanitize";
-import { UPLOAD_DIR, BLUR_DIR } from "../config";
+import { UPLOAD_DIR, BLUR_DIR, HIGH_VALUE_CATEGORIES } from "../config";
 
 const router = Router();
 router.use(requireAuth);
@@ -55,6 +55,11 @@ router.post("/", async (req, res: Response) => {
   const storageLocation = String(b.storageLocation || "").trim();
   if (!name) return res.status(400).json({ ok: false, msg: "请填写物品名称" });
   if (!storageLocation) return res.status(400).json({ ok: false, msg: "请填写存放位置，方便后续取物" });
+  // A. 特征描述必填（≥5字）：它是认领核对的"密钥"，公众端不可见
+  const description = String(b.description || "").trim();
+  if (description.length < 5) {
+    return res.status(400).json({ ok: false, msg: "请填写特征描述（至少5个字），如颜色/品牌/内含物——认领时要靠它核对身份" });
+  }
 
   const me = req.authUser!;
   const photoArr: string[] = Array.isArray(b.photos) ? b.photos.filter(Boolean) : [];
@@ -65,7 +70,7 @@ router.post("/", async (req, res: Response) => {
     code,
     name,
     category: b.category || null,
-    description: b.description || null,
+    description,
     photo: photoArr.length ? photoArr.join(",") : null,
     foundLocation: b.foundLocation || null,
     foundTime: b.foundTime || null,
@@ -147,7 +152,16 @@ router.get("/:id", async (req, res) => {
   if (!Number.isInteger(idNum)) return res.status(400).json({ ok: false, msg: "无效的物品ID" });
   const item = await prisma.item.findUnique({ where: { id: idNum } });
   if (!item) return res.status(404).json({ ok: false, msg: "物品不存在" });
-  res.json({ ok: true, item: out(item) });
+  // 患者报失来源：附带报失手机号，前端据此做"认领号码一致性"软拦截提示
+  let reportPhone: string | null = null;
+  if (item.source === "患者报失") {
+    const rep = await prisma.lostReport.findFirst({
+      where: { matchedItemId: item.id },
+      select: { ownerPhone: true },
+    });
+    reportPhone = rep?.ownerPhone || null;
+  }
+  res.json({ ok: true, item: out(item), reportPhone });
 });
 
 // ===== PUT /api/items/:id —— 编辑物品信息（编号/照片不变）=====
@@ -174,12 +188,17 @@ router.put("/:id", async (req, res) => {
     hiddenPhotos = hid.length ? hid.join(",") : null;
   }
 
+  // 特征描述：传了非空值就校验长度（补录老物品时同样≥5字）
+  if (b.description !== undefined && String(b.description).trim() && String(b.description).trim().length < 5) {
+    return res.status(400).json({ ok: false, msg: "特征描述至少5个字，请写具体（颜色/品牌/内含物）" });
+  }
+
   const updated = await prisma.item.update({
     where: { id },
     data: {
       name,
       category: b.category ?? item.category,
-      description: b.description ?? item.description,
+      description: b.description !== undefined ? String(b.description).trim() || null : item.description,
       foundLocation: b.foundLocation ?? item.foundLocation,
       foundTime: b.foundTime ?? item.foundTime,
       storageLocation: b.storageLocation ?? item.storageLocation,
@@ -211,6 +230,11 @@ router.put("/:id/founder", async (req, res) => {
 });
 
 // ===== POST /api/items/:id/claim —— 认领（keepClaim=true 时为修改认领信息）=====
+// 防冒领四道校验（新认领严格模式；编辑历史认领宽松模式）：
+//  D. 认领人电话必填且仅收 11 位手机号；高价值类别（证件/手机数码/钱包）必须现场拍照
+//  B. 认领人自述特征 ≥10 字（留痕，导医对照登记特征核对）
+//  C. 患者报失来源：认领手机号≠报失手机号 → 软拦截，需勾选原因（家属代领/号码已换/其他）
+//  A. 可顺带补录登记特征（老物品无描述时认领抽屉提供补录框）
 router.post("/:id/claim", async (req, res) => {
   const id = Number(req.params.id);
   const item = await prisma.item.findUnique({ where: { id } });
@@ -225,6 +249,52 @@ router.post("/:id/claim", async (req, res) => {
   if (!claimerName) return res.status(400).json({ ok: false, msg: "请填写认领人姓名" });
   if (!b.featureVerified) return res.status(400).json({ ok: false, msg: "请勾选已核对物品特征" });
 
+  const claimerPhone = String(b.claimerPhone || "").trim();
+  const claimerNote = String(b.claimerNote || "").trim();
+  if (!keep) {
+    // 严格模式（新认领）
+    if (!/^1[3-9]\d{9}$/.test(claimerPhone)) {
+      return res.status(400).json({ ok: false, msg: "请填写认领人11位手机号（仅收手机号码）" });
+    }
+    if (claimerNote.length < 10) {
+      return res.status(400).json({ ok: false, msg: "请填写认领人自述特征（至少10个字），如物品颜色/品牌/内含物" });
+    }
+    if (HIGH_VALUE_CATEGORIES.includes(item.category || "") && !b.claimerPhoto) {
+      return res.status(400).json({ ok: false, msg: `「${item.category}」类物品认领必须现场拍摄认领人照片` });
+    }
+  } else if (claimerPhone && !/^1[3-9]\d{9}$/.test(claimerPhone)) {
+    // 编辑模式：传了电话就校验格式，但不强制补全历史数据
+    return res.status(400).json({ ok: false, msg: "手机号格式不正确（11位，1开头）" });
+  }
+
+  // C. 患者报失来源：手机号一致性软拦截（两种模式都生效）
+  let mismatch: { reason: string; note?: string } | null = null;
+  if (item.source === "患者报失") {
+    const rep = await prisma.lostReport.findFirst({ where: { matchedItemId: item.id } });
+    if (rep && rep.ownerPhone !== claimerPhone) {
+      const reason = String(b.claimMismatchReason || "").trim();
+      const allowed = ["家属代领", "报失号码已换", "其他"];
+      if (!allowed.includes(reason)) {
+        return res.status(400).json({
+          ok: false,
+          msg: `认领手机号与报失手机号（${rep.ownerPhone}）不一致，请勾选原因（家属代领/报失号码已换/其他）后再提交`,
+        });
+      }
+      const note = String(b.claimMismatchNote || "").trim();
+      if (reason === "其他" && note.length < 2) {
+        return res.status(400).json({ ok: false, msg: "选择「其他」时请填写具体说明" });
+      }
+      mismatch = { reason, note: note || undefined };
+    }
+  }
+
+  // A. 认领时补录登记特征（可选，≥5字才采纳）
+  let descriptionTopUp: string | undefined;
+  if (b.description !== undefined) {
+    const d = String(b.description || "").trim();
+    if (d.length >= 5) descriptionTopUp = d;
+  }
+
   const me = req.authUser!;
   const claimedAt = keep ? (item.claimedAt || parseClaimTime(b.claimedAt)) : parseClaimTime(b.claimedAt);
   // 原子认领（与 v1 对齐）：UPDATE 带状态条件，并发提交只有一个能命中，
@@ -232,12 +302,15 @@ router.post("/:id/claim", async (req, res) => {
   const data = {
     status: "已认领",
     claimerName,
-    claimerPhone: String(b.claimerPhone || "").trim() || null,
+    claimerPhone: claimerPhone || null,
     claimerGroup: b.claimerGroup || null,
     claimerGender: b.claimerGender || null,
     featureVerified: true,
     claimedAt,
     operator: me.name,
+    // 新认领必填自述特征；编辑时传了才更新
+    claimerNote: !keep ? claimerNote : (claimerNote || item.claimerNote),
+    ...(descriptionTopUp ? { description: descriptionTopUp } : {}),
     ...(keep ? {} : { claimerPhoto: b.claimerPhoto || null }),
   };
   const result = keep
@@ -251,7 +324,10 @@ router.post("/:id/claim", async (req, res) => {
   }
   const updated = await prisma.item.findUnique({ where: { id } });
   if (!updated) return res.status(404).json({ ok: false, msg: "物品不存在" });
-  await audit(req, keep ? "edit_claim" : "claim", "item", id, { code: item.code, claimerName, claimedAt });
+  await audit(req, keep ? "edit_claim" : "claim", "item", id, {
+    code: item.code, claimerName, claimerPhone, claimerNote,
+    ...(mismatch ? { mismatch } : {}),
+  });
   res.json({
     ok: true, item: out(updated),
     msg: keep ? "认领信息已更新" : `认领登记完成：${item.code} 已归还给 ${claimerName}`,
@@ -271,7 +347,7 @@ router.post("/:id/unclaim", async (req, res) => {
     data: {
       status: "待认领",
       claimerName: null, claimerPhone: null, claimerGroup: null, claimerGender: null,
-      claimedAt: null, operator: null, featureVerified: false, claimerPhoto: null,
+      claimedAt: null, operator: null, featureVerified: false, claimerPhoto: null, claimerNote: null,
     },
   });
   removePhotoFiles([item.claimerPhoto]);

@@ -6,7 +6,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { audit } from "../middleware/audit";
 import { createItemWithCodeRetry } from "../services/code";
-import { UPLOAD_DIR, BLUR_DIR } from "../config";
+import { UPLOAD_DIR, BLUR_DIR, HIGH_VALUE_CATEGORIES } from "../config";
 
 const router = Router();
 router.use(requireAuth);
@@ -137,6 +137,36 @@ router.post("/:id/found-claim", async (req, res) => {
   if (!claimerName) return res.status(400).json({ ok: false, msg: "请填写认领人姓名" });
   if (!b.featureVerified) return res.status(400).json({ ok: false, msg: "请勾选已核对物品特征" });
 
+  // 与 /api/items/:id/claim 同款的防冒领校验（严格模式）
+  const claimerPhone = String(b.claimerPhone || "").trim();
+  if (!/^1[3-9]\d{9}$/.test(claimerPhone)) {
+    return res.status(400).json({ ok: false, msg: "请填写认领人11位手机号（仅收手机号码）" });
+  }
+  const claimerNote = String(b.claimerNote || "").trim();
+  if (claimerNote.length < 10) {
+    return res.status(400).json({ ok: false, msg: "请填写认领人自述特征（至少10个字），如物品颜色/品牌/内含物" });
+  }
+  if (HIGH_VALUE_CATEGORIES.includes(rep.itemCategory || "") && !b.claimerPhoto) {
+    return res.status(400).json({ ok: false, msg: `「${rep.itemCategory}」类物品认领必须现场拍摄认领人照片` });
+  }
+  // 手机号一致性软拦截：报失一步认领默认回填报失手机号，不一致需勾选原因
+  let mismatch: { reason: string; note?: string } | null = null;
+  if (rep.ownerPhone !== claimerPhone) {
+    const reason = String(b.claimMismatchReason || "").trim();
+    const allowed = ["家属代领", "报失号码已换", "其他"];
+    if (!allowed.includes(reason)) {
+      return res.status(400).json({
+        ok: false,
+        msg: `认领手机号与报失手机号（${rep.ownerPhone}）不一致，请勾选原因（家属代领/报失号码已换/其他）后再提交`,
+      });
+    }
+    const note = String(b.claimMismatchNote || "").trim();
+    if (reason === "其他" && note.length < 2) {
+      return res.status(400).json({ ok: false, msg: "选择「其他」时请填写具体说明" });
+    }
+    mismatch = { reason, note: note || undefined };
+  }
+
   const me = req.authUser!;
   let claimedAt = fmtNow();
   if (b.claimedAt && String(b.claimedAt).includes("T")) {
@@ -164,13 +194,14 @@ router.post("/:id/found-claim", async (req, res) => {
       source: "患者报失",
       registeredBy: me.name,
       claimerName,
-      claimerPhone: String(b.claimerPhone || "").trim() || null,
+      claimerPhone,
       claimerGroup: b.claimerGroup || null,
       claimerGender: b.claimerGender || null,
       featureVerified: true,
       claimedAt,
       operator: me.name,
       claimerPhoto: b.claimerPhoto || null,
+      claimerNote,
     }));
   } catch (e) {
     await rollbackReport(id, "已找到");
@@ -183,7 +214,7 @@ router.post("/:id/found-claim", async (req, res) => {
       note: `已找到并认领，编号${item.code}`,
     },
   });
-  await audit(req, "report_found_claim", "lost_report", id, { code: item.code, itemId: item.id, claimerName });
+  await audit(req, "report_found_claim", "lost_report", id, { code: item.code, itemId: item.id, claimerName, claimerPhone, ...(mismatch ? { mismatch } : {}) });
   res.json({ ok: true, msg: `已找到并认领完成，编号 ${item.code}（患者报失）` });
 });
 

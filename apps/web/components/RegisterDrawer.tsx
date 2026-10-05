@@ -115,8 +115,8 @@ export default function RegisterDrawer({
           </div>
         </div>
         <div className="mb-3.5">
-          <label className="lbl">特征描述</label>
-          <textarea className="inp min-h-[80px]" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="关键核对信息，如：内有医保卡一张" />
+          <label className="lbl">特征描述 <span className="text-red-600">*</span> <span className="text-xs font-normal text-slate-400">（至少5字——认领核对的依据，公众端不可见）</span></label>
+          <textarea className="inp min-h-[80px]" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="关键核对信息，如：内有医保卡一张、黑色拉链有磨损" required minLength={5} />
         </div>
         <div className="mb-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
           <div>

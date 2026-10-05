@@ -7,15 +7,18 @@ cd "$(dirname "$0")"
 echo "=== 1/5 拉取最新代码 ==="
 git pull --ff-only
 
-echo "=== 2/5 编译后端 ==="
+echo "=== 2/6 编译后端 ==="
 pnpm --filter @lostfound/api build
 
-echo "=== 3/5 构建前端 ==="
+echo "=== 3/6 数据库迁移（如有新迁移文件自动应用）==="
+pnpm --filter @lostfound/api exec prisma migrate deploy
+
+echo "=== 4/6 构建前端 ==="
 pnpm --filter @lostfound/web build
 
-echo "=== 4/5 重启服务 ==="
+echo "=== 5/6 重启服务 ==="
 pm2 restart lostfound-api lostfound-web
-echo "=== 5/5 健康检查（最多等 30 秒，服务预热有重试）==="
+echo "=== 6/6 健康检查（最多等 30 秒，服务预热有重试）==="
 FAIL=0
 HTTP=000; API=0; ONLINE=0
 for i in $(seq 1 10); do

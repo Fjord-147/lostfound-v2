@@ -143,7 +143,7 @@ export default function ItemsPage() {
                       <div className="flex gap-1.5">
                         <button className="btn btn-outline btn-sm !px-2.5" title="编辑物品" onClick={() => setEditItem(it)}>✏</button>
                         {it.source === "患者报失" && (
-                          <button className="btn btn-sm !bg-emerald-600 !from-emerald-600 !to-emerald-700" title="确认找到：患者进度条显示「已找到，请尽快来领」" onClick={() => confirmFoundItem(it)}>📣 找到</button>
+                          <button className="btn btn-sm !bg-emerald-600 !from-emerald-600 !to-emerald-700" title="确认找到：患者进度条显示「已找到，请尽快来领」" onClick={() => confirmFoundItem(it)}>找到</button>
                         )}
                         {it.status === "待认领" && (
                           <button className="btn btn-sm" onClick={() => { setClaimId(it.id); setClaimOpen(true); }}>认领</button>
@@ -167,14 +167,14 @@ export default function ItemsPage() {
             const st = CATEGORY_STYLE[it.category || "其他"] || CATEGORY_STYLE["其他"];
             const tps = photosOf(it);
             return (
-              <div key={it.id} className="w-full rounded-xl border p-4" style={{ background: st.bg, borderColor: st.border }}>
+              <div key={it.id} className="flex h-full w-full flex-col rounded-xl border p-4" style={{ background: st.bg, borderColor: st.border }}>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[13px] text-slate-500">编号 {it.code}</span>
                   <span className="text-xl">{CATEGORY_ICONS[it.category || ""]}</span>
                   <span className={`tag ${it.status === "已认领" ? "tag-returned" : "tag-pending"}`}>{it.status}</span>
                   {it.source === "患者报失" && <span className="tag tag-source">🙋 患者报失</span>}
                 </div>
-                <div className="my-1 text-[17px] font-semibold">{it.name}</div>
+                <div className="my-1 line-clamp-2 min-h-[46px] text-[17px] font-semibold leading-snug">{it.name}</div>
                 {tps.length > 0 ? (
                   <div className="relative mt-2 h-44 w-full cursor-zoom-in overflow-hidden rounded-lg bg-white/50"
                     onClick={() => setZoom({ photos: tps, start: carousel })}>
@@ -194,7 +194,7 @@ export default function ItemsPage() {
                     <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white">🔍 点击放大</span>
                   </div>
                 ) : (
-                  <div className="mt-2 flex h-36 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white/50 text-5xl opacity-40">
+                  <div className="mt-2 flex h-44 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white/50 text-5xl opacity-40">
                     {CATEGORY_ICONS[it.category || ""] || "📦"}
                   </div>
                 )}
@@ -205,7 +205,7 @@ export default function ItemsPage() {
                   <div><span className="text-slate-500">捡到时间：</span>{fmtDT(it.foundTime) || "—"}</div>
                   <div><span className="text-slate-500">捡到人：</span>{it.source === "患者报失" ? "患者报失" : it.founder || "—"}</div>
                   <div><span className="text-slate-500">登记人：</span>{it.registeredBy || "—"}</div>
-                  <div className="col-span-2 line-clamp-3 break-all rounded bg-amber-50 px-2 py-1.5"><span className="text-amber-700">特征：</span>{it.description || "—"}</div>
+                  <div className="col-span-2 line-clamp-2 break-all rounded bg-amber-50 px-2 py-1.5"><span className="text-amber-700">特征：</span>{it.description || "—"}</div>
                 </div>
                 {it.status === "已认领" && (
                   <div className="mt-2 rounded-md bg-white/70 px-3 py-2 text-[13px] leading-relaxed">
@@ -215,10 +215,10 @@ export default function ItemsPage() {
                     认领时间：{it.claimedAt}　经办人：{it.operator}
                   </div>
                 )}
-                <div className="mt-2.5 flex justify-end gap-2">
+                <div className="mt-auto flex justify-end gap-2 pt-2.5">
                   <button className="btn btn-outline btn-sm" onClick={() => setEditItem(it)}>✏ 编辑</button>
                   {it.source === "患者报失" && (
-                    <button className="btn btn-sm !bg-emerald-600 !from-emerald-600 !to-emerald-700" title="确认找到：患者进度条显示「已找到，请尽快来领」" onClick={() => confirmFoundItem(it)}>📣 找到</button>
+                    <button className="btn btn-sm !bg-emerald-600 !from-emerald-600 !to-emerald-700" title="确认找到：患者进度条显示「已找到，请尽快来领」" onClick={() => confirmFoundItem(it)}>找到</button>
                   )}
                   {it.status === "待认领" && <button className="btn btn-sm" onClick={() => { setClaimId(it.id); setClaimOpen(true); }}>✓ 认领</button>}
                 </div>

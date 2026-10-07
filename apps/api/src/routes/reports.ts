@@ -118,7 +118,7 @@ router.post("/:id/register", async (req, res) => {
     where: { id },
     data: {
       matchedItemId: item.id,
-      note: (req.body?.note as string) || "已转入失物总表",
+      note: (req.body?.note as string) || "",
     },
   });
   await audit(req, "report_register", "lost_report", id, { code: item.code, itemId: item.id });

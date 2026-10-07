@@ -146,24 +146,24 @@ export default function MyReportsPage() {
                       )}
                       {step === 1 && (
                         <div className="mt-2.5 rounded-lg bg-brand-light px-3 py-2 text-[13px] text-brand-dark">
-                          已受理：您的报失已登记，如找到匹配物品会第一时间在这里通知您。
+                          我们知道您丢东西啦，请耐心等待，找到会第一时间在这里通知您哦 🌷
                         </div>
                       )}
                       {r.status === "待领取" && (
                         <div className="mt-2.5 rounded-lg bg-green-50 px-3 py-2.5 text-[13px] leading-relaxed text-green-700">
                           🌷 您好，物品已找到啦！请本人携带有效证件尽快到门诊导医台核对认领。
-                          {r.note && <div className="mt-1">👩‍⚕️ 护士小姐姐：{r.note}</div>}
+                          {r.note && <div className="mt-1">👩‍⚕️护士小姐姐留言:{r.note}</div>}
                         </div>
                       )}
                       {r.status === "已找到" && (
                         <div className="mt-2.5 rounded-lg bg-slate-50 px-3 py-2 text-[13px] text-slate-500">
                           ✅ 流程已完成：物品已被您或家属取走。感谢使用失物招领服务！
-                          {r.note && <div className="mt-1">👩‍⚕️ 护士小姐姐：{r.note}</div>}
+                          {r.note && <div className="mt-1">👩‍⚕️护士小姐姐留言:{r.note}</div>}
                         </div>
                       )}
                       {r.status !== "待领取" && r.status !== "已找到" && r.note && (
                         <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-[13px] leading-relaxed text-slate-600">
-                          👩‍⚕️ 护士小姐姐：{r.note}
+                          👩‍⚕️护士小姐姐留言:{r.note}
                         </div>
                       )}
                     </>

@@ -56,7 +56,7 @@ export default function ReportsPage() {
     toast(d.msg, d.ok ? "success" : "error");
     if (d.ok) load();
   }
-  async function confirmFound() {
+  async function doConfirmFound() {
     const d = await api(`/api/reports/${confirmFound.id}/confirm-found`, {
       method: "POST", body: JSON.stringify({ note: confirmFound.__note || "" }),
     });
@@ -157,7 +157,7 @@ export default function ReportsPage() {
         />
         <div className="flex gap-3">
           <button className="btn btn-outline flex-1" onClick={() => setConfirmFound(null)}>取消</button>
-          <button className="btn flex-1" onClick={confirmFound}>确定确认找到</button>
+          <button className="btn flex-1" onClick={doConfirmFound}>确定确认找到</button>
         </div>
       </Modal>
 

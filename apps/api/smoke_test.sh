@@ -114,6 +114,29 @@ CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/a
 R=$(curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items/$ID3/claim -H 'Content-Type: application/json' \
   -d '{"claimerName":"失主儿子","claimerPhone":"13900001111","claimerNote":"家属代领的自述特征，十个字以上","featureVerified":true,"claimMismatchReason":"家属代领"}')
 echo "$R" | grep -q '"ok":true' && echo "$R" | grep -q 'claimerNote' && ok "9g 选原因后放行且自述特征已存档" || bad "9g 放行+存档" "$R"
+# 9h 认领联动：报失记录应自动进入「已取走」（已找到）
+R=$(curl -s -b /tmp/v2_cookie.txt -G "$B/api/reports" --data-urlencode "status=all" --data-urlencode "q=闭环失主")
+echo "$R" | python3 -c "
+import json,sys
+rs=[r for r in json.load(sys.stdin)['reports'] if r['itemName']=='一串钥匙']
+st=rs[0]['status'] if rs else '?'
+print('ST='+st)" > /tmp/st.txt
+ST=$(grep -oP "ST=\K.*" /tmp/st.txt)
+[ "$ST" = "已找到" ] && ok "9h 认领后报失自动流转为已取走(已找到)" || bad "9h 联动流转" "status=$ST"
+
+# 10 确认找到闭环（进度条③）：报失→登记→confirm-found→患者看到待领取→认领→已取走
+curl -s -X POST $B/api/public/report -H 'Content-Type: application/json' -H 'X-Forwarded-For: 8.8.8.8' \
+  -d '{"ownerName":"进度条失主","ownerPhone":"13566667777","itemName":"灰色保温杯","itemCategory":"水杯/雨伞","description":"杯身有卡通贴纸"}' > /dev/null
+RID2=$(curl -s -b /tmp/v2_cookie.txt -G "$B/api/reports" --data-urlencode "status=待查找" --data-urlencode "q=进度条失主" | python3 -c "import sys,json;print(json.load(sys.stdin)['reports'][0]['id'])")
+curl -s -b /tmp/v2_cookie.txt -X POST $B/api/reports/$RID2/register -H 'Content-Type: application/json' -d '{}' > /dev/null
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/api/reports/$RID2/confirm-found -H 'Content-Type: application/json' -d '{"note":"放在导医台2号抽屉"}')
+R=$(curl -s -X POST $B/api/public/my-reports -H 'Content-Type: application/json' -d '{"phone":"13566667777"}')
+echo "$R" | grep -q '"status":"待领取"' && echo "$R" | grep -q "导医台2号抽屉" && ok "10a 确认找到后患者可见待领取+留言" || bad "10a confirm-found" "HTTP $CODE / $R"
+ID4=$(curl -s -b /tmp/v2_cookie.txt -G "$B/api/items" --data-urlencode "q=灰色保温杯" | python3 -c "import sys,json;print(json.load(sys.stdin)['items'][0]['id'])")
+curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items/$ID4/claim -H 'Content-Type: application/json' \
+  -d '{"claimerName":"进度条失主","claimerPhone":"13566667777","claimerNote":"灰色保温杯带卡通贴纸，十个字","featureVerified":true}' > /dev/null
+R=$(curl -s -X POST $B/api/public/my-reports -H 'Content-Type: application/json' -d '{"phone":"13566667777"}')
+echo "$R" | grep -q '"status":"已找到"' && ok "10b 取走后进度终点(已找到/已取走)" || bad "10b 终点状态" "$R"
 
 # 10 导出 Excel：魔数 PK + 公式注入被中和
 curl -s -b /tmp/v2_cookie.txt -o /tmp/v2_export.xlsx "$B/api/stats/export"

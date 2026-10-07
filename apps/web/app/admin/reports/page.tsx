@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { CATEGORY_ICONS, fmtDT } from "@/lib/types";
-import { toast, ConfirmDanger, PhotoZoom, Drawer } from "@/components/ui";
+import { toast, ConfirmDanger, PhotoZoom, Drawer, Modal } from "@/components/ui";
 import PhotoPicker, { PickedPhoto } from "@/components/PhotoPicker";
 import { uploadFiles, dataUrlToBlob } from "@/lib/api";
 import { nowLocalStr, HIGH_VALUE_CATEGORIES } from "@/lib/types";
 
-const STATUSES = ["待查找", "已登记", "已找到", "已忽略"];
+const STATUSES = ["待查找", "已登记", "待领取", "已找到", "已忽略"];
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<any[]>([]);
@@ -17,6 +17,7 @@ export default function ReportsPage() {
   const [q, setQ] = useState("");
   const [confirmReg, setConfirmReg] = useState<any>(null);
   const [confirmIg, setConfirmIg] = useState<any>(null);
+  const [confirmFound, setConfirmFound] = useState<any>(null);
   const [foundRep, setFoundRep] = useState<any>(null);
   const [zoomPhotos, setZoomPhotos] = useState<string[] | null>(null);
   const [me, setMe] = useState("");
@@ -55,6 +56,14 @@ export default function ReportsPage() {
     toast(d.msg, d.ok ? "success" : "error");
     if (d.ok) load();
   }
+  async function confirmFound() {
+    const d = await api(`/api/reports/${confirmFound.id}/confirm-found`, {
+      method: "POST", body: JSON.stringify({ note: confirmFound.__note || "" }),
+    });
+    toast(d.msg, d.ok ? "success" : "error");
+    setConfirmFound(null);
+    if (d.ok) load();
+  }
 
   return (
     <div>
@@ -83,7 +92,7 @@ export default function ReportsPage() {
           <div key={r.id} className={`card border-l-4 p-4 ${r.status === "已找到" ? "border-l-green-500 opacity-90" : r.status === "已忽略" ? "border-l-slate-400 opacity-70" : "border-l-orange-400"}`}>
             <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
               <span className="text-[17px] font-semibold line-clamp-2 break-all">{r.itemName}</span>
-              <span className={`tag ${r.status === "已找到" ? "tag-returned" : r.status === "待查找" ? "tag-pending" : "bg-slate-100 text-slate-500"}`}>{r.status}</span>
+              <span className={`tag ${r.status === "已找到" ? "tag-returned" : r.status === "待领取" ? "tag-pending" : r.status === "待查找" ? "tag-pending" : "bg-slate-100 text-slate-500"}`}>{r.status}</span>
               <span className="ml-auto text-xs text-slate-400">{r.createdAt}</span>
             </div>
             <div className="flex gap-3.5">
@@ -110,6 +119,12 @@ export default function ReportsPage() {
                 <button className="btn btn-sm" onClick={() => setFoundRep(r)}>✓ 已找到</button>
                 <button className="btn btn-outline btn-sm" onClick={() => setConfirmIg({ ...r, __note: "" })}>忽略</button>
               </div>
+            ) : r.status === "已登记" ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button className="btn btn-sm" onClick={() => setConfirmFound(r)}>📣 确认找到</button>
+                <span className="text-xs text-slate-400">患者进度将显示「已找到，请尽快来领」</span>
+                <button className="btn btn-outline btn-sm ml-auto" onClick={() => reopen(r)}>↩ 重新查找</button>
+              </div>
             ) : (
               <div className="mt-3 text-right">
                 <button className="btn btn-outline btn-sm" onClick={() => reopen(r)}>↩ 重新查找</button>
@@ -128,6 +143,23 @@ export default function ReportsPage() {
       <ConfirmDanger open={!!confirmIg} onClose={() => setConfirmIg(null)} title="忽略报失"
         hint="确定要忽略这条报失吗？忽略后可在「已忽略」里恢复。"
         onConfirm={ignore} />
+      {/* 确认找到（患者进度条推进到「已找到」） */}
+      <Modal open={!!confirmFound} onClose={() => setConfirmFound(null)}>
+        <div className="mb-2 text-lg font-semibold">📣 确认找到</div>
+        <div className="mb-3 text-sm text-slate-500">
+          确定 <strong>{confirmFound?.itemName}</strong> 就是这位患者报失的物品吗？确认后患者查询页将显示「已找到，请尽快来领」。
+        </div>
+        <textarea
+          className="inp mb-4 min-h-[64px]"
+          placeholder="给患者的留言（选填），如：放在导医台2号抽屉，请带证件来领"
+          value={confirmFound?.__note || ""}
+          onChange={(e) => setConfirmFound((r: any) => r && { ...r, __note: e.target.value })}
+        />
+        <div className="flex gap-3">
+          <button className="btn btn-outline flex-1" onClick={() => setConfirmFound(null)}>取消</button>
+          <button className="btn flex-1" onClick={confirmFound}>确定确认找到</button>
+        </div>
+      </Modal>
 
       {/* 已找到 → 认领抽屉 */}
       <FoundClaimDrawer rep={foundRep} me={me} onClose={() => setFoundRep(null)}

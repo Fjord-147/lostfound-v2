@@ -324,6 +324,18 @@ router.post("/:id/claim", async (req, res) => {
   }
   const updated = await prisma.item.findUnique({ where: { id } });
   if (!updated) return res.status(404).json({ ok: false, msg: "物品不存在" });
+  // 患者报失来源：认领完成（取走）→ 联动报失记录进入「已取走」终点
+  if (!keep && item.source === "患者报失") {
+    await prisma.lostReport.updateMany({
+      where: { matchedItemId: id, status: { in: ["已登记", "待领取"] } },
+      data: {
+        status: "已找到",
+        note: `已由${claimerName}取走（编号${item.code}）`,
+        handledBy: me.name,
+        handledAt: fmt(new Date()),
+      },
+    });
+  }
   await audit(req, keep ? "edit_claim" : "claim", "item", id, {
     code: item.code, claimerName, claimerPhone, claimerNote,
     ...(mismatch ? { mismatch } : {}),
@@ -351,6 +363,13 @@ router.post("/:id/unclaim", async (req, res) => {
     },
   });
   removePhotoFiles([item.claimerPhoto]);
+  // 患者报失来源：撤销取走 → 报失记录退回「待领取」
+  if (item.source === "患者报失") {
+    await prisma.lostReport.updateMany({
+      where: { matchedItemId: id, status: "已找到" },
+      data: { status: "待领取", note: "取走登记已撤销，物品重新待认领" },
+    });
+  }
   await audit(req, "unclaim", "item", id, { code: item.code, formerClaimer: item.claimerName });
   res.json({ ok: true, msg: `已撤销认领：${item.code} 退回待认领` });
 });

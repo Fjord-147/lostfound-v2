@@ -1,15 +1,43 @@
 "use client";
 // 查询我的报失（与 v1 public_my_reports 对齐）：输入报失时的手机号，查看自己的处理进度
-import { useState } from "react";
+// 进度条四节点：已报失 → 已受理 → 已找到 → 已取走
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { API } from "@/lib/api";
 
-const STATUS_STYLE: Record<string, string> = {
-  待查找: "tag-pending",
-  已登记: "tag-source",
-  已找到: "tag-returned",
-  已忽略: "tag-pending",
+const STEPS = ["已报失", "已受理", "已找到", "已取走"];
+// 报失状态 → 进度条当前节点（0起）
+const STATUS_STEP: Record<string, number> = {
+  待查找: 0,
+  已登记: 1,
+  待领取: 2,
+  已找到: 3,
 };
+
+// 四节点进度条：current=当前节点(0起)，之前的节点打勾
+function Stepper({ current }: { current: number }) {
+  return (
+    <div className="mt-3 flex items-start">
+      {STEPS.map((label, i) => (
+        <Fragment key={label}>
+          {i > 0 && <div className={`mx-1 mt-3 h-0.5 flex-1 ${i <= current ? "bg-brand" : "bg-slate-200"}`} />}
+          <div className="flex flex-col items-center">
+            <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+              i < current ? "bg-brand text-white"
+              : i === current ? "bg-brand text-white ring-4 ring-brand-light"
+              : "bg-slate-200 text-slate-400"
+            }`}>{i < current ? "✓" : i + 1}</div>
+            <div className={`mt-1 whitespace-nowrap text-[11px] ${
+              i === current ? "font-bold text-brand-dark"
+              : i < current ? "font-medium text-slate-600"
+              : "text-slate-400"
+            }`}>{label}</div>
+          </div>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
 
 export default function MyReportsPage() {
   const [phone, setPhone] = useState("");
@@ -88,29 +116,61 @@ export default function MyReportsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {reports.map((r) => (
-              <div key={r.id} className="rounded-xl border border-slate-200 bg-white p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="text-[15px] font-semibold">{r.itemName}</div>
-                  <span className={`tag ${STATUS_STYLE[r.status] || "tag-pending"}`}>{r.status}</span>
-                </div>
-                <div className="mt-1.5 text-[13px] leading-relaxed text-slate-500">
-                  {r.itemCategory && <span>类别:{r.itemCategory}　</span>}
-                  {r.lostLocation && <span>丢失地点:{r.lostLocation}</span>}
-                </div>
-                <div className="mt-1 text-[12px] text-slate-400">报失时间:{r.createdAt}</div>
-                {r.note && (
-                  <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-[13px] leading-relaxed text-slate-600">
-                    💬 {r.note}
+            {reports.map((r) => {
+              const step = STATUS_STEP[r.status];
+              const ignored = r.status === "已忽略";
+              return (
+                <div key={r.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-[15px] font-semibold">{r.itemName}</div>
+                    <span className="text-[12px] text-slate-400">报失:{r.createdAt}</span>
                   </div>
-                )}
-                {r.status === "已找到" && (
-                  <div className="mt-2 rounded-lg bg-green-50 px-3 py-2 text-[13px] text-green-700">
-                    🎉 物品已找到！请本人携带有效证件到门诊导医台核对认领。
+                  <div className="mt-1 text-[13px] text-slate-500">
+                    {r.itemCategory && <span>类别:{r.itemCategory}　</span>}
+                    {r.lostLocation && <span>丢失地点:{r.lostLocation}</span>}
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {ignored ? (
+                    <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2.5 text-[13px] leading-relaxed text-slate-500">
+                      该报失暂未匹配到物品。如后续有线索，可直接到门诊导医台询问。
+                      {r.note && <div className="mt-1 text-slate-400">💬 {r.note}</div>}
+                    </div>
+                  ) : (
+                    <>
+                      <Stepper current={step} />
+                      {/* 各节点的说明文案 */}
+                      {step === 0 && (
+                        <div className="mt-2.5 rounded-lg bg-brand-light px-3 py-2 text-[13px] text-brand-dark">
+                          已收到您的报失，导医正在帮您留意，请耐心等待。
+                        </div>
+                      )}
+                      {step === 1 && (
+                        <div className="mt-2.5 rounded-lg bg-brand-light px-3 py-2 text-[13px] text-brand-dark">
+                          已受理：您的报失已登记，如找到匹配物品会第一时间在这里通知您。
+                        </div>
+                      )}
+                      {r.status === "待领取" && (
+                        <div className="mt-2.5 rounded-lg bg-green-50 px-3 py-2.5 text-[13px] leading-relaxed text-green-700">
+                          🎉 <strong>物品已找到！</strong>请本人携带有效证件尽快到门诊导医台核对认领。
+                          {r.note && <div className="mt-1">💬 {r.note}</div>}
+                        </div>
+                      )}
+                      {r.status === "已找到" && (
+                        <div className="mt-2.5 rounded-lg bg-slate-50 px-3 py-2 text-[13px] text-slate-500">
+                          ✅ 流程已完成：物品已被您或家属取走。感谢使用失物招领服务！
+                          {r.note && <div className="mt-1 text-slate-400">💬 {r.note}</div>}
+                        </div>
+                      )}
+                      {r.status !== "待领取" && r.status !== "已找到" && r.note && (
+                        <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-[13px] leading-relaxed text-slate-600">
+                          💬 {r.note}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )
       )}

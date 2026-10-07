@@ -71,7 +71,7 @@ router.get("/", async (req, res) => {
     prisma.lostReport.findMany({ where, orderBy: { id: "desc" } }),
     prisma.lostReport.groupBy({ by: ["status"], _count: true }),
   ]);
-  const cnt: Record<string, number> = { 待查找: 0, 已登记: 0, 已找到: 0, 已忽略: 0 };
+  const cnt: Record<string, number> = { 待查找: 0, 已登记: 0, 待领取: 0, 已找到: 0, 已忽略: 0 };
   for (const c of counts) cnt[c.status] = c._count;
   res.json({ ok: true, reports: reports.map(out), counts: cnt });
 });
@@ -254,6 +254,25 @@ router.post("/:id/undo-register", async (req, res) => {
   });
   await audit(req, "report_undo_register", "lost_report", id, { code: item.code, itemId: item.id });
   res.json({ ok: true, msg: `已撤销登记：${item.code} 已从总表移除，该报失重新进入待查找` });
+});
+
+// POST /api/reports/:id/confirm-found —— 已登记→待领取：
+// 导医确认物品就是患者报的这件，患者查询页进度条跳到「已找到，请尽快来领」
+router.post("/:id/confirm-found", async (req, res) => {
+  const id = Number(req.params.id);
+  const rep = await prisma.lostReport.findUnique({ where: { id } });
+  if (!rep) return res.status(404).json({ ok: false, msg: "报失记录不存在" });
+  if (rep.status !== "已登记") {
+    return res.status(400).json({ ok: false, msg: "只有「已登记」状态的报失才能确认找到" });
+  }
+  const me = req.authUser!;
+  const note = String(req.body?.note || "").trim() || "物品已找到，请尽快到门诊导医台核对认领";
+  await prisma.lostReport.update({
+    where: { id },
+    data: { status: "待领取", note, handledBy: me.name, handledAt: fmtNow() },
+  });
+  await audit(req, "report_confirm_found", "lost_report", id, { note });
+  res.json({ ok: true, msg: "已确认找到，患者查询页将显示「已找到，请尽快来领」" });
 });
 
 // POST /api/reports/:id/handle —— 忽略 / 重新查找

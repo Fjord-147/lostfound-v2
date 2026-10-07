@@ -1,12 +1,14 @@
 "use client";
-// 工作台：品牌横幅 + 统计卡 + 报失提醒 + 就地搜索 + 待认领清单 + 登记/认领抽屉
+// 工作台：品牌横幅 + 统计卡(可点击看明细) + 报失提醒 + 就地搜索 + 待认领清单 + 登记/认领抽屉
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { photosOf, CATEGORY_ICONS, fmtDT } from "@/lib/types";
-import { toast } from "@/components/ui";
+import { toast, Drawer } from "@/components/ui";
 import RegisterDrawer from "@/components/RegisterDrawer";
 import ClaimDrawer from "@/components/ClaimDrawer";
+
+const pad = (n: number) => String(n).padStart(2, "0");
 
 export default function AdminHome() {
   const [me, setMe] = useState("");
@@ -18,6 +20,15 @@ export default function AdminHome() {
   const [claimTarget, setClaimTarget] = useState<number | null>(null);
   const [claimOpen, setClaimOpen] = useState(false);
   const [notice, setNotice] = useState<{ code: string; name: string; id: number } | null>(null);
+  // 统计卡明细弹层：title + 数据接口路径
+  const [detail, setDetail] = useState<{ title: string; path: string } | null>(null);
+  const [detailItems, setDetailItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!detail) return;
+    setDetailItems([]);
+    api(detail.path).then((d) => d.ok && setDetailItems(d.items));
+  }, [detail]);
 
   const load = useCallback(() => {
     api("/api/items/pending").then((d) => {
@@ -53,6 +64,8 @@ export default function AdminHome() {
   const list = searchItems ?? items;
   const today = new Date();
   const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+  const monthFirst = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-01`;
 
   return (
     <div>
@@ -72,17 +85,18 @@ export default function AdminHome() {
         </Link>
       )}
 
-      {/* 统计卡 */}
+      {/* 统计卡：点击弹出对应明细 */}
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[
-          { n: stats.todayCount ?? 0, l: "今日新登记", c: "border-l-brand" },
-          { n: stats.pendingCount ?? 0, l: "待认领总数", c: "border-l-orange-400" },
-          { n: stats.monthReturned ?? 0, l: "本月已归还", c: "border-l-green-500" },
+          { n: stats.todayCount ?? 0, l: "今日新登记", c: "border-l-brand", path: `/api/items?view=all&dateFrom=${todayStr}&dateTo=${todayStr}` },
+          { n: stats.pendingCount ?? 0, l: "待认领总数", c: "border-l-orange-400", path: "/api/items?status=待认领" },
+          { n: stats.monthReturned ?? 0, l: "本月已归还", c: "border-l-green-500", path: `/api/items?view=claims&dateFrom=${monthFirst}&dateTo=${todayStr}` },
         ].map((s, i) => (
-          <div key={i} className={`card border-l-4 p-5 text-center transition hover:-translate-y-0.5 hover:shadow-md ${s.c}`}>
+          <button key={i} onClick={() => setDetail({ title: `${s.l}明细`, path: s.path })}
+            className={`card border-l-4 p-5 text-center transition hover:-translate-y-0.5 hover:shadow-md ${s.c}`}>
             <div className={`text-3xl font-bold tabular-nums ${i === 1 ? "text-orange-500" : i === 2 ? "text-green-600" : "text-brand-dark"}`}>{s.n}</div>
-            <div className="mt-1 text-sm text-slate-500">{s.l}</div>
-          </div>
+            <div className="mt-1 text-sm text-slate-500">{s.l} <span className="text-xs text-slate-300">（点击查看）</span></div>
+          </button>
         ))}
       </div>
 
@@ -177,6 +191,40 @@ export default function AdminHome() {
         me={me}
         onDone={(msg) => { toast(msg, "success"); load(); }}
       />
+
+      {/* 统计卡明细抽屉 */}
+      <Drawer open={!!detail} onClose={() => setDetail(null)} title={detail?.title || ""}>
+        {detailItems.length === 0 ? (
+          <div className="py-10 text-center text-sm text-slate-400">暂无记录</div>
+        ) : (
+          <div className="space-y-2">
+            {detailItems.map((it) => (
+              <div key={it.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-2.5">
+                {it.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`/api/upload/files/${photosOf(it)[0]}`} className="h-11 w-11 flex-shrink-0 rounded object-cover" alt="" />
+                ) : (
+                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded bg-slate-100 text-xl">
+                    {CATEGORY_ICONS[it.category || ""] || "📦"}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs text-slate-400">{it.code}</div>
+                  <div className="truncate text-sm font-semibold">
+                    {it.name}
+                    <span className={`tag ml-1.5 ${it.status === "已认领" ? "tag-returned" : "tag-pending"}`}>{it.status}</span>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {it.status === "已认领"
+                      ? `认领人 ${it.claimerName} · ${it.claimedAt || ""}`
+                      : `${it.category || "未分类"} · 存放 ${it.storageLocation || "—"}`}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }

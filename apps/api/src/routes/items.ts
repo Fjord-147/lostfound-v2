@@ -109,10 +109,12 @@ router.get("/", async (req, res) => {
       }));
     }
   }
+  // 日期筛选：认领视图按「认领时间」筛（本月已归还），其余按登记时间筛
   if (dateFrom || dateTo) {
-    where.createdAt = {};
-    if (dateFrom) where.createdAt.gte = new Date(dateFrom + "T00:00:00");
-    if (dateTo) where.createdAt.lte = new Date(dateTo + "T23:59:59");
+    const field = view === "claims" ? "claimedAt" : "createdAt";
+    where[field] = {};
+    if (dateFrom) where[field].gte = view === "claims" ? dateFrom : new Date(dateFrom + "T00:00:00");
+    if (dateTo) where[field].lte = view === "claims" ? dateTo + " 23:59:59" : new Date(dateTo + "T23:59:59");
   }
 
   const items = await prisma.item.findMany({ where, orderBy: { id: "desc" }, take: 500 });

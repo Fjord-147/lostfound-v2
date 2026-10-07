@@ -6,6 +6,19 @@ import { API, uploadFiles, dataUrlToBlob } from "@/lib/api";
 import { CATEGORIES, LOCATIONS, nowLocalStr } from "@/lib/types";
 import PhotoPicker, { PickedPhoto } from "@/components/PhotoPicker";
 
+// 丢失时间快速选项：N 天前的同一时刻（"大约"足够精确）
+const QUICK_DAYS = [
+  { label: "今天", days: 0 },
+  { label: "昨天", days: 1 },
+  { label: "前天", days: 2 },
+  { label: "上周", days: 7 },
+];
+const pad2 = (n: number) => String(n).padStart(2, "0");
+function dayAgo(days: number): string {
+  const d = new Date(Date.now() - days * 86_400_000);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
 export default function ReportPage() {
   const [ownerName, setOwnerName] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
@@ -104,7 +117,17 @@ export default function ReportPage() {
           </div>
           <div className="mt-3.5">
             <label className="lbl">丢失时间（大约）</label>
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {QUICK_DAYS.map(({ label, days }) => (
+                <button key={label} type="button"
+                  className={`rounded-full border px-3 py-1 text-xs transition ${lostTime.slice(0, 10) === dayAgo(days).slice(0, 10) ? "border-brand bg-brand font-medium text-white" : "border-slate-200 bg-white text-slate-500 hover:border-brand"}`}
+                  onClick={() => setLostTime(dayAgo(days))}>
+                  {label}
+                </button>
+              ))}
+            </div>
             <input type="datetime-local" className="inp" value={lostTime} onChange={(e) => setLostTime(e.target.value)} />
+            <div className="mt-1 text-xs text-slate-400">点上面按钮快速选「昨天/前天」等，也可以在框里手动精确调整</div>
           </div>
           <div className="mt-3.5">
             <label className="lbl">物品照片 <span className="text-xs font-normal text-slate-400">（选填，手机点「上传」可直接调起相机）</span></label>

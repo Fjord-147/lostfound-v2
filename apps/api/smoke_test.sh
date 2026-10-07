@@ -131,12 +131,12 @@ RID2=$(curl -s -b /tmp/v2_cookie.txt -G "$B/api/reports" --data-urlencode "statu
 curl -s -b /tmp/v2_cookie.txt -X POST $B/api/reports/$RID2/register -H 'Content-Type: application/json' -d '{}' > /dev/null
 CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/api/reports/$RID2/confirm-found -H 'Content-Type: application/json' -d '{"note":"放在导医台2号抽屉"}')
 R=$(curl -s -X POST $B/api/public/my-reports -H 'Content-Type: application/json' -d '{"phone":"13566667777"}')
-echo "$R" | grep -q '"status":"待领取"' && echo "$R" | grep -q "导医台2号抽屉" && ok "10a 确认找到后患者可见待领取+留言" || bad "10a confirm-found" "HTTP $CODE / $R"
+echo "$R" | grep -q '"status":"待领取"' && echo "$R" | grep -q "导医台2号抽屉" && ok "9i 确认找到后患者可见待领取+留言" || bad "9i confirm-found" "HTTP $CODE / $R"
 ID4=$(curl -s -b /tmp/v2_cookie.txt -G "$B/api/items" --data-urlencode "q=灰色保温杯" | python3 -c "import sys,json;print(json.load(sys.stdin)['items'][0]['id'])")
 curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items/$ID4/claim -H 'Content-Type: application/json' \
   -d '{"claimerName":"进度条失主","claimerPhone":"13566667777","claimerNote":"灰色保温杯带卡通贴纸，十个字","featureVerified":true}' > /dev/null
 R=$(curl -s -X POST $B/api/public/my-reports -H 'Content-Type: application/json' -d '{"phone":"13566667777"}')
-echo "$R" | grep -q '"status":"已找到"' && ok "10b 取走后进度终点(已找到/已取走)" || bad "10b 终点状态" "$R"
+echo "$R" | grep -q '"status":"已找到"' && ok "9j 取走后进度终点(已找到/已取走)" || bad "9j 终点状态" "$R"
 
 # 10 导出 Excel：魔数 PK + 公式注入被中和
 curl -s -b /tmp/v2_cookie.txt -o /tmp/v2_export.xlsx "$B/api/stats/export"

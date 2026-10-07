@@ -55,10 +55,11 @@ router.post("/", async (req, res: Response) => {
   const storageLocation = String(b.storageLocation || "").trim();
   if (!name) return res.status(400).json({ ok: false, msg: "请填写物品名称" });
   if (!storageLocation) return res.status(400).json({ ok: false, msg: "请填写存放位置，方便后续取物" });
-  // A. 特征描述必填（≥5字）：它是认领核对的"密钥"，公众端不可见
+  // A. 特征描述内部登记选填（患者报失必填，见 public.ts）；
+  // 填了就要求 ≥5 字，保证写就有核对价值
   const description = String(b.description || "").trim();
-  if (description.length < 5) {
-    return res.status(400).json({ ok: false, msg: "请填写特征描述（至少5个字），如颜色/品牌/内含物——认领时要靠它核对身份" });
+  if (description && description.length < 5) {
+    return res.status(400).json({ ok: false, msg: "特征描述至少5个字，请写具体（颜色/品牌/内含物）" });
   }
 
   const me = req.authUser!;
@@ -70,7 +71,7 @@ router.post("/", async (req, res: Response) => {
     code,
     name,
     category: b.category || null,
-    description,
+    description: description || null,
     photo: photoArr.length ? photoArr.join(",") : null,
     foundLocation: b.foundLocation || null,
     foundTime: b.foundTime || null,
@@ -344,6 +345,29 @@ router.post("/:id/claim", async (req, res) => {
     ok: true, item: out(updated),
     msg: keep ? "认领信息已更新" : `认领登记完成：${item.code} 已归还给 ${claimerName}`,
   });
+});
+
+// ===== POST /api/items/:id/confirm-found —— 患者报失物品的「找到」=====
+// 失物总表操作列的入口：联动关联报失记录 已登记→待领取（患者进度条推到"已找到"）
+router.post("/:id/confirm-found", async (req, res) => {
+  const id = Number(req.params.id);
+  const item = await prisma.item.findUnique({ where: { id } });
+  if (!item) return res.status(404).json({ ok: false, msg: "物品不存在" });
+  if (item.source !== "患者报失") {
+    return res.status(400).json({ ok: false, msg: "仅患者报失来源的物品需要「确认找到」" });
+  }
+  const rep = await prisma.lostReport.findFirst({ where: { matchedItemId: id, status: "已登记" } });
+  if (!rep) {
+    return res.status(400).json({ ok: false, msg: "该物品的报失记录不在「已登记」状态（可能已确认过或已取走）" });
+  }
+  const me = req.authUser!;
+  const note = String(req.body?.note || "").trim() || "物品已找到，请尽快到门诊导医台核对认领";
+  await prisma.lostReport.update({
+    where: { id: rep.id },
+    data: { status: "待领取", note, handledBy: me.name, handledAt: fmt(new Date()) },
+  });
+  await audit(req, "item_confirm_found", "item", id, { code: item.code, reportId: rep.id, note });
+  res.json({ ok: true, msg: `已确认找到，报失患者将看到「已找到，请尽快来领」` });
 });
 
 // ===== POST /api/items/:id/unclaim —— 撤销认领（需输"确认"）=====

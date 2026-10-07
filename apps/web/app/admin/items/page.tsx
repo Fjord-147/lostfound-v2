@@ -40,6 +40,14 @@ export default function ItemsPage() {
     localStorage.setItem("lf_view", v);
   }
 
+  // 患者报失物品：确认找到 → 患者进度条推到「已找到，请尽快来领」
+  async function confirmFoundItem(it: any) {
+    if (!confirm(`确认「${it.name}」就是报失患者的东西吗？\n患者查询页将显示「已找到，请尽快来领」。`)) return;
+    const d = await api(`/api/items/${it.id}/confirm-found`, { method: "POST", body: JSON.stringify({}) });
+    toast(d.msg, d.ok ? "success" : "error");
+    if (d.ok) load();
+  }
+
   // 卡片轮播
   function slide(d: number, len: number) {
     setCarousel((i) => (i + d + len) % len);
@@ -134,6 +142,9 @@ export default function ItemsPage() {
                     <td className="whitespace-nowrap px-3 py-2">
                       <div className="flex gap-1.5">
                         <button className="btn btn-outline btn-sm !px-2.5" title="编辑物品" onClick={() => setEditItem(it)}>✏</button>
+                        {it.source === "患者报失" && (
+                          <button className="btn btn-sm !bg-emerald-600 !from-emerald-600 !to-emerald-700" title="确认找到：患者进度条显示「已找到，请尽快来领」" onClick={() => confirmFoundItem(it)}>📣 找到</button>
+                        )}
                         {it.status === "待认领" && (
                           <button className="btn btn-sm" onClick={() => { setClaimId(it.id); setClaimOpen(true); }}>认领</button>
                         )}
@@ -206,6 +217,9 @@ export default function ItemsPage() {
                 )}
                 <div className="mt-2.5 flex justify-end gap-2">
                   <button className="btn btn-outline btn-sm" onClick={() => setEditItem(it)}>✏ 编辑</button>
+                  {it.source === "患者报失" && (
+                    <button className="btn btn-sm !bg-emerald-600 !from-emerald-600 !to-emerald-700" title="确认找到：患者进度条显示「已找到，请尽快来领」" onClick={() => confirmFoundItem(it)}>📣 找到</button>
+                  )}
                   {it.status === "待认领" && <button className="btn btn-sm" onClick={() => { setClaimId(it.id); setClaimOpen(true); }}>✓ 认领</button>}
                 </div>
               </div>

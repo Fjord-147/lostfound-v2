@@ -98,9 +98,9 @@ export default function ReportPage() {
             </div>
           </div>
           <div className="mt-3.5">
-            <label className="lbl">物品特征描述</label>
-            <textarea className="inp min-h-[80px]" maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)}
-              placeholder="描述越详细越容易找到，如：内有医保卡一张、钥匙两把" />
+            <label className="lbl">物品特征描述 <span className="text-red-600">*</span></label>
+            <textarea className="inp min-h-[80px]" maxLength={200} required minLength={5} value={description} onChange={(e) => setDescription(e.target.value)}
+              placeholder="至少5个字，描述越详细越容易找到，如：黑色钱包，内有医保卡一张、现金若干" />
           </div>
           <div className="mt-3.5">
             <label className="lbl">丢失时间（大约）</label>

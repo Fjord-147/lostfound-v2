@@ -91,7 +91,12 @@ router.post("/report", ipRateLimit(60 * 60_000, 10), async (req, res) => {
   // 长度限制（防撑爆页面/垃圾数据）
   if (ownerName.length > 20) return res.status(400).json({ ok: false, msg: "姓名过长（最多20字）" });
   if (itemName.length > 50) return res.status(400).json({ ok: false, msg: "物品名称过长（最多50字）" });
-  if (b.description && String(b.description).length > 200) {
+  // 特征描述必填（≥5字）：它是导医核对认领的"密钥"，越详细越容易匹配
+  const description = String(b.description || "").trim();
+  if (description.length < 5) {
+    return res.status(400).json({ ok: false, msg: "请填写物品特征描述（至少5个字），越详细越容易找到，如颜色/品牌/内含物" });
+  }
+  if (description.length > 200) {
     return res.status(400).json({ ok: false, msg: "特征描述过长（最多200字）" });
   }
   const rep = await prisma.lostReport.create({
@@ -100,7 +105,7 @@ router.post("/report", ipRateLimit(60 * 60_000, 10), async (req, res) => {
       ownerPhone,
       itemName,
       itemCategory: b.itemCategory || null,
-      description: b.description || null,
+      description,
       lostLocation: b.lostLocation === "__other__" ? b.lostLocationOther : b.lostLocation || null,
       lostTime: b.lostTime || null,
       photo: b.photo || null,

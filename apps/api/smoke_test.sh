@@ -49,13 +49,17 @@ R=$(curl -s -b /tmp/v2_cookie.txt -X POST $B/api/items -H 'Content-Type: applica
   -d '{"name":"=HYPERLINK(\"http://evil.example\",\"点我\")","category":"其他","description":"测试特征描述，含公式注入名称的物品","storageLocation":"导诊台1号抽屉"}')
 echo "$R" | grep -q '"ok":true' && ok "6 登记特殊名称物品" || bad "6 登记物品" "$R"
 
-# 6b 特征描述必填（A 方案）：<5字或无描述 → 400
+# 6b/6c 内部登记特征选填：不传→成功；传了<5字→被拒（患者报失必填见 6d）
 CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/api/items -H 'Content-Type: application/json' \
-  -d '{"name":"无特征物品","category":"其他","description":"太短","storageLocation":"导诊台"}')
-[ "$CODE" = "400" ] && ok "6b 特征描述<5字被拒(400)" || bad "6b 特征必填" "HTTP $CODE"
+  -d '{"name":"无特征物品","category":"其他","storageLocation":"导诊台"}')
+[ "$CODE" = "200" ] && ok "6b 内部登记特征选填(不传可通过)" || bad "6b 内部选填" "HTTP $CODE"
 CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/api/items -H 'Content-Type: application/json' \
-  -d '{"name":"无特征物品2","category":"其他","storageLocation":"导诊台"}')
-[ "$CODE" = "400" ] && ok "6c 缺特征描述被拒(400)" || bad "6c 特征必填" "HTTP $CODE"
+  -d '{"name":"无特征物品2","category":"其他","description":"太短","storageLocation":"导诊台"}')
+[ "$CODE" = "400" ] && ok "6c 内部登记特征<5字仍被拒(400)" || bad "6c 长度校验" "HTTP $CODE"
+# 6d 患者报失特征必填（≥5字）
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/public/report -H 'Content-Type: application/json' -H 'X-Forwarded-For: 3.3.3.3' \
+  -d '{"ownerName":"无特征失主","ownerPhone":"13677778888","itemName":"一串钥匙"}')
+[ "$CODE" = "400" ] && ok "6d 患者报失缺特征被拒(400)" || bad "6d 报失必填" "HTTP $CODE"
 
 # 7 hiddenPhotos 非子集被拒
 ID=$(curl -s -b /tmp/v2_cookie.txt "$B/api/items?q=HYPERLINK" | python3 -c "import sys,json;print(json.load(sys.stdin)['items'][0]['id'])")
@@ -92,7 +96,7 @@ CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X POST $B/a
 
 # 9 报失→登记入总表→撤销登记 闭环
 curl -s -X POST $B/api/public/report -H 'Content-Type: application/json' -H 'X-Forwarded-For: 5.5.5.5' \
-  -d '{"ownerName":"闭环失主","ownerPhone":"13655556666","itemName":"一串钥匙"}' > /dev/null
+  -d '{"ownerName":"闭环失主","ownerPhone":"13655556666","itemName":"一串钥匙","description":"钥匙串上有三把钥匙"}' > /dev/null
 RID=$(curl -s -b /tmp/v2_cookie.txt -G "$B/api/reports" --data-urlencode "status=待查找" --data-urlencode "q=闭环失主" | python3 -c "import sys,json;print(json.load(sys.stdin)['reports'][0]['id'])")
 R=$(curl -s -b /tmp/v2_cookie.txt -X POST $B/api/reports/$RID/register -H 'Content-Type: application/json' -d '{}')
 echo "$R" | grep -q '"ok":true' && ok "9a 报失登记入总表" || bad "9a 登记入总表" "$R"
@@ -156,8 +160,8 @@ else:
 PY
 
 # 11 公众报失限流按 IP 分桶（trust proxy 下 XFF 生效）：10 条 OK，第 11 条 429
-for i in $(seq 1 10); do curl -s -o /dev/null -X POST $B/api/public/report -H 'Content-Type: application/json' -H 'X-Forwarded-For: 6.6.6.6' -d "{\"ownerName\":\"批量$i\",\"ownerPhone\":\"1370000000$i\",\"itemName\":\"测试物品$i\"}"; done
-CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/public/report -H 'Content-Type: application/json' -H 'X-Forwarded-For: 6.6.6.6' -d '{"ownerName":"批量11","ownerPhone":"13700000011","itemName":"测试物品11"}')
+for i in $(seq 1 10); do curl -s -o /dev/null -X POST $B/api/public/report -H 'Content-Type: application/json' -H 'X-Forwarded-For: 6.6.6.6' -d "{\"ownerName\":\"批量$i\",\"ownerPhone\":\"1370000000$i\",\"itemName\":\"测试物品$i\",\"description\":\"批量测试的物品特征描述\"}"; done
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/public/report -H 'Content-Type: application/json' -H 'X-Forwarded-For: 6.6.6.6' -d '{"ownerName":"批量11","ownerPhone":"13700000011","itemName":"测试物品11","description":"批量测试的物品特征描述"}')
 [ "$CODE" = "429" ] && ok "11 报失限流 10条/小时，第11条429" || bad "11 报失限流" "HTTP $CODE"
 
 # 12 未登录访问管理接口 → 401

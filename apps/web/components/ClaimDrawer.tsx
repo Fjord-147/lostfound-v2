@@ -50,7 +50,16 @@ export default function ClaimDrawer({
 
   async function loadItem(id: number) {
     const d = await api(`/api/items/${id}`);
-    if (d.ok) { setTarget(d.item); setReportPhone(d.reportPhone || null); }
+    if (d.ok) {
+      setTarget(d.item);
+      setReportPhone(d.reportPhone || null);
+      // 患者报失来源：认领人手机号默认回填报失手机号，自述特征默认引用
+      // 患者报失时的原话——本人来领零填写；家属代领时改手机号会触发软拦截
+      if (d.item.source === "患者报失") {
+        setClaimerPhone(d.reportPhone || "");
+        setClaimerNote(d.item.description || "");
+      }
+    }
   }
 
   async function search() {
@@ -217,6 +226,11 @@ export default function ClaimDrawer({
           <div className="mt-3.5">
             <label className="lbl">认领人自述特征 <span className="text-red-600">*</span> <span className="text-xs font-normal text-slate-400">（至少10字：颜色/品牌/内含物/磨损点，需与登记特征一致）</span></label>
             <textarea className="inp min-h-[70px]" value={claimerNote} onChange={(e) => setClaimerNote(e.target.value)} placeholder="如：蓝色折叠伞，伞柄缠了黄色胶带，伞面右下角有磨损" />
+            {target.source === "患者报失" && (
+              <div className="mt-1 text-xs leading-relaxed text-slate-400">
+                🙋 患者报失物品已自动回填：手机号取自报失记录，自述特征引用报失原话（均可修改；家属代领请把手机号改成代领人的，系统会记录原因）。
+              </div>
+            )}
           </div>
           {/* 无特征物品：提醒并允许认领时补录 */}
           {!target.description && (

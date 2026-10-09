@@ -7,10 +7,10 @@ const SECTIONS = [
     icon: "🙋",
     title: "我是失主（丢了东西）",
     lines: [
-      <>1. 先找：在<Link href="/" className="text-brand">失物招领首页</Link>浏览「待认领」物品（照片已马赛克、名称已隐去细节，防冒领）。</>,
-      <>2. 没找到？点「没找到 / 我捡到」登记报失，丢失信息越详细越好（特征、时间、地点）。</>,
-      <>3. 查进度：在<Link href="/my-reports" className="text-brand">查询我的报失</Link>输入手机号，随时查看处理状态。</>,
-      <>4. 去认领：收到通知（或看到匹配）后，<strong>本人带有效证件</strong>到门诊导医台，描述物品特征核对无误后归还。</>,
+      <>1. 登记报失：点首页「东西丢了？登记报失」，<strong>特征描述越详细越好</strong>（颜色/品牌/内含物）——它是认领时的核对依据。</>,
+      <>2. 查进度：在<Link href="/my-reports" className="text-brand">查询我的报失</Link>输入报失时的手机号，随时查看进度（已报失→已受理→已找到→已取走）。</>,
+      <>3. 去认领：进度显示「已找到」后，<strong>本人带有效证件</strong>到门诊导医台，描述物品特征核对无误后归还。</>,
+      <>💡 为防止冒领，本院拾获物品清单不对外公示，按特征核对是唯一且最可靠的认领方式。</>,
     ],
   },
   {
@@ -64,7 +64,7 @@ export default function HelpPage() {
       </div>
 
       <div className="mt-4 rounded-xl border border-dashed border-brand bg-brand-light px-4 py-3 text-center text-[13px] leading-relaxed text-slate-500">
-        🔒 隐私说明：认领人姓名/电话、报失人信息仅管理员可见；公众端照片一律马赛克处理，已认领物品自动下架。
+        🔒 隐私与防冒领说明：拾获物品清单不对外公示；认领人姓名/电话、报失人信息仅管理员可见；认领以报失时填写的特征描述为核对依据。
       </div>
 
       <footer className="mt-8 border-t border-slate-200 py-5 text-center text-xs text-slate-400">

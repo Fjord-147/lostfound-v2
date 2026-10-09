@@ -1,134 +1,70 @@
 "use client";
-// 公众首页（半盲）：马赛克照片 + 脱敏名称 + 旬日期 + 隐私说明 + 报失入口
-import { useEffect, useState } from "react";
+// 公众首页：只保留两个动作——登记报失 / 查询进度（2026-10-09 起不再公示物品清单，
+// 避免暴露医院库存给冒领者可乘之机；大厅公示屏若将来需要可复用 /api/public/items）
 import Link from "next/link";
-import { API } from "@/lib/api";
-import { CATEGORIES } from "@/lib/types";
 
 export default function PublicHome() {
-  const [items, setItems] = useState<any[]>([]);
-  const [cat, setCat] = useState("");
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    setError(false);
-    fetch(`${API}/api/public/items${cat ? `?category=${encodeURIComponent(cat)}` : ""}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.ok) setItems(d.items);
-        else setError(true);
-      })
-      .catch(() => setError(true));
-  }, [cat]);
-
   return (
-    <div className="mx-auto min-h-screen max-w-3xl px-3 pb-8">
+    <div className="mx-auto min-h-screen max-w-2xl px-3 pb-8">
       {/* 顶部导航 */}
       <nav className="sticky top-0 z-20 -mx-3 mb-1 flex items-center bg-gradient-to-r from-brand to-brand-dark px-3 py-2.5 text-white shadow">
         <div className="truncate text-[15px] font-semibold">🏥 苏州和康中医医院 · 失物招领</div>
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <Link href="/my-reports" className="rounded-full bg-white/15 px-2.5 py-1 text-xs no-underline">查进度</Link>
-          <Link href="/help" className="rounded-full bg-white/15 px-2.5 py-1 text-xs no-underline">帮助</Link>
-          <Link href="/login" className="rounded-full bg-white/15 px-3 py-1 text-xs no-underline">管理员入口 →</Link>
-        </div>
+        <Link href="/login" className="ml-auto shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs no-underline">管理员入口 →</Link>
       </nav>
 
       {/* 标题 */}
-      <div className="py-4 text-center">
-        <h1 className="text-xl font-bold text-brand-dark sm:text-2xl">失物招领</h1>
-        <p className="mx-auto mt-1 max-w-md text-[13px] leading-relaxed text-slate-500">
-          和康中医医院捡到的物品在此展示，看到您丢失的请到<strong>导医台</strong>核对认领
+      <div className="py-6 text-center">
+        <h1 className="text-2xl font-bold text-brand-dark">失物招领</h1>
+        <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-slate-500">
+          丢了东西请登记报失，导医会帮您留意<br />
+          找到后会在这里通知您来认领
         </p>
       </div>
 
-      {/* 四大入口（与 v1 对齐：浏览/报失/查进度/帮助） */}
-      <div className="mb-5 grid grid-cols-2 gap-2.5">
-        <button onClick={() => { setCat(""); document.getElementById("list")?.scrollIntoView({ behavior: "smooth" }); }} className="flex items-center gap-2.5 rounded-xl border-2 border-sky-200 bg-gradient-to-br from-brand-light to-cyan-100 p-3.5 text-left transition hover:-translate-y-0.5 hover:shadow-lg sm:gap-3.5 sm:p-4">
-          <span className="text-3xl">🔍</span>
+      {/* 两大动作 */}
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Link href="/report" className="flex items-center gap-3 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-100 p-5 no-underline transition hover:-translate-y-0.5 hover:shadow-lg">
+          <span className="text-4xl">📝</span>
           <span>
-            <span className="block text-[15px] font-bold text-brand-dark sm:text-[17px]">我丢了东西</span>
-            <span className="block text-xs text-slate-500">看看有没有被捡到</span>
-          </span>
-        </button>
-        <Link href="/report" className="flex items-center gap-2.5 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-100 p-3.5 no-underline transition hover:-translate-y-0.5 hover:shadow-lg sm:gap-3.5 sm:p-4">
-          <span className="text-3xl">📝</span>
-          <span>
-            <span className="block text-[15px] font-bold text-orange-700 sm:text-[17px]">没找到 / 我捡到</span>
-            <span className="block text-xs text-slate-500">登记报失，等通知</span>
+            <span className="block text-[17px] font-bold text-orange-700">东西丢了？登记报失</span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">填写丢失物品信息，<br />我们帮您留意</span>
           </span>
         </Link>
-        <Link href="/my-reports" className="flex items-center gap-2.5 rounded-xl border-2 border-sky-200 bg-gradient-to-br from-sky-50 to-cyan-50 p-3.5 no-underline transition hover:-translate-y-0.5 hover:shadow-lg sm:gap-3.5 sm:p-4">
-          <span className="text-3xl">📋</span>
+        <Link href="/my-reports" className="flex items-center gap-3 rounded-xl border-2 border-sky-200 bg-gradient-to-br from-brand-light to-cyan-100 p-5 no-underline transition hover:-translate-y-0.5 hover:shadow-lg">
+          <span className="text-4xl">🔎</span>
           <span>
-            <span className="block text-[15px] font-bold text-brand-dark sm:text-[17px]">查询我的报失</span>
-            <span className="block text-xs text-slate-500">输入手机号查进度</span>
-          </span>
-        </Link>
-        <Link href="/help" className="flex items-center gap-2.5 rounded-xl border-2 border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 p-3.5 no-underline transition hover:-translate-y-0.5 hover:shadow-lg sm:gap-3.5 sm:p-4">
-          <span className="text-3xl">❓</span>
-          <span>
-            <span className="block text-[15px] font-bold text-slate-700 sm:text-[17px]">使用帮助</span>
-            <span className="block text-xs text-slate-500">失主/拾物者/导医</span>
+            <span className="block text-[17px] font-bold text-brand-dark">查询我的报失</span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">输入报失时的手机号，<br />查看处理进度</span>
           </span>
         </Link>
       </div>
 
-      {/* 类别筛选 */}
-      <div id="list" className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
-        <button onClick={() => setCat("")}
-          className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm ${!cat ? "bg-brand text-white" : "border border-slate-200 bg-white text-slate-500"}`}>全部</button>
-        {CATEGORIES.map((c) => (
-          <button key={c} onClick={() => setCat(c)}
-            className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm ${cat === c ? "bg-brand text-white" : "border border-slate-200 bg-white text-slate-500"}`}>{c}</button>
-        ))}
+      {/* 捡到物品引导 */}
+      <div className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-[14px] leading-relaxed text-slate-600">
+        🤲 <strong>捡到了东西？</strong>请直接交到<strong>门诊导医台</strong>，由导医登记入库。
+        无需网上登记——网上入口只面向失主。
       </div>
 
-      {/* 半盲卡片 */}
-      {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center text-sm text-red-600">
-          网络异常，无法加载失物列表<br />
-          <button onClick={() => location.reload()} className="mt-2 rounded-lg border border-red-300 bg-white px-4 py-2">刷新重试</button>
-        </div>
-      ) : items.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2.5">
-          {items.map((it) => (
-            <div key={it.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <div className="aspect-square w-full bg-slate-100">
-                {it.hasPhoto ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={`${API}/api/public/photo/${it.id}?v=mosaic2`} alt="物品照片（马赛克）" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-5xl opacity-60">{it.icon}</div>
-                )}
-              </div>
-              <div className="p-2.5">
-                <div className="truncate text-[15px] font-semibold">{it.safeName}</div>
-                <div className="mt-0.5"><span className="tag tag-pending">待认领</span></div>
-                <div className="mt-0.5 text-[11px] text-slate-400">{it.rough}捡到</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="py-12 text-center text-slate-400">
-          <div className="mb-2 text-5xl">🔍</div>
-          目前没有待认领的物品
-          <div className="mt-1.5 text-[13px]">如果您丢了东西，可以<Link href="/report" className="text-brand">在这里报失</Link>，我们会留意</div>
-        </div>
-      )}
+      {/* 流程说明 */}
+      <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="mb-2 text-[15px] font-bold text-brand-dark">🔁 找回流程</div>
+        <ol className="list-decimal space-y-1 pl-5 text-[13px] leading-relaxed text-slate-600">
+          <li>登记报失：描述物品特征，越详细越好</li>
+          <li>等待通知：找到后「查询我的报失」会显示进度</li>
+          <li>到场认领：本人带有效证件到导医台，描述特征核对后取回</li>
+        </ol>
+      </div>
 
-      {/* 隐私提示 */}
-      {items.length > 0 && (
-        <div className="mt-4 rounded-xl border border-dashed border-brand bg-brand-light px-4 py-3 text-center text-[13px] leading-relaxed text-slate-500">
-          🔒 为防止冒领，照片已做马赛克处理，名称已隐去颜色等细节。<br />
-          如认为是您的物品，请到<strong>导医台</strong>描述特征核对认领。
-        </div>
-      )}
+      {/* 隐私说明 */}
+      <div className="rounded-xl border border-dashed border-brand bg-brand-light px-4 py-3 text-center text-[13px] leading-relaxed text-slate-500">
+        🔒 为保护失主权益、防止冒领，本院拾获物品清单不对外公示。<br />
+        认领时以您报失时填写的特征描述作为核对依据。
+      </div>
 
       <footer className="mt-8 border-t border-slate-200 py-5 text-center text-xs text-slate-400">
         苏州和康中医医院 · 导医台失物招领服务<br />
         捡到物品请交到导医台 · 认领请本人到场核对<br />
-        <Link href="/help" className="text-brand">使用帮助</Link> · <Link href="/my-reports" className="text-brand">查询我的报失</Link>
+        <Link href="/help" className="text-brand">使用帮助</Link>
       </footer>
     </div>
   );

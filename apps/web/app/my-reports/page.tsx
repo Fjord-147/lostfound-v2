@@ -156,7 +156,7 @@ export default function MyReportsPage() {
                         </div>
                       )}
                       {r.status === "已找到" && (
-                        <div className="mt-2.5 rounded-lg bg-slate-50 px-3 py-2 text-[13px] text-slate-500">
+                        <div className="mt-2.5 rounded-lg bg-green-50 px-3 py-2 text-[13px] leading-relaxed text-green-700">
                           ✅ 流程已完成：物品已被您或家属取走。感谢使用失物招领服务！
                           {r.note && <div className="mt-1">👩‍⚕️护士小姐姐留言:{r.note}</div>}
                         </div>

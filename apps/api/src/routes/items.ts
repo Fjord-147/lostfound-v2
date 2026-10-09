@@ -130,7 +130,8 @@ router.get("/pending", async (req, res) => {
 
   const [todayCount, pendingCount, monthReturned, todayReturned, pendingReports, pendingItems] =
     await Promise.all([
-      prisma.item.count({ where: { createdAt: { gte: new Date(today + "T00:00:00") } } }),
+      // 今日新登记口径：今天登记且仍在库（待认领）——当天已归还的只计入"今日归还"，避免双份
+      prisma.item.count({ where: { createdAt: { gte: new Date(today + "T00:00:00") }, status: "待认领" } }),
       prisma.item.count({ where: { status: "待认领" } }),
       prisma.item.count({
         where: { status: "已认领", claimedAt: { startsWith: month } },

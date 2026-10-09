@@ -88,7 +88,7 @@ export default function AdminHome() {
       {/* 统计卡：点击弹出对应明细 */}
       <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { n: stats.todayCount ?? 0, l: "今日新登记", c: "border-l-brand", path: `/api/items?view=all&status=all&dateFrom=${todayStr}&dateTo=${todayStr}` },
+          { n: stats.todayCount ?? 0, l: "今日新登记", c: "border-l-brand", path: `/api/items?view=all&status=待认领&dateFrom=${todayStr}&dateTo=${todayStr}` },
           { n: stats.pendingCount ?? 0, l: "待认领总数", c: "border-l-orange-400", path: "/api/items?status=待认领" },
           { n: stats.todayReturned ?? 0, l: "今日归还", c: "border-l-emerald-400", path: `/api/items?view=claims&dateFrom=${todayStr}&dateTo=${todayStr}` },
           { n: stats.monthReturned ?? 0, l: "本月已归还", c: "border-l-green-600", path: `/api/items?view=claims&dateFrom=${monthFirst}&dateTo=${todayStr}` },

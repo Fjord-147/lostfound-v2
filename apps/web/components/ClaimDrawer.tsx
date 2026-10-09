@@ -78,7 +78,7 @@ export default function ClaimDrawer({
     if (!verified) return toast("请勾选已核对物品特征", "error");
     // 前端先行校验（后端有同款真闸门，这里只是友好提示）
     if (!/^1[3-9]\d{9}$/.test(claimerPhone.trim())) return toast("请填写认领人11位手机号（仅收手机号码）", "error");
-    if (claimerNote.trim().length < 10) return toast("请填写认领人自述特征（至少10个字）", "error");
+    if (target.source !== "患者报失" && claimerNote.trim().length < 10) return toast("请填写认领人自述特征（至少10个字）", "error");
     if (highValue && photos.length === 0) return toast(`「${target.category}」类物品必须现场拍摄认领人照片`, "error");
     if (mismatchNeeded && !mismatchReason) return toast("认领手机号与报失手机号不一致，请勾选原因", "error");
     if (mismatchReason === "其他" && mismatchNote.trim().length < 2) return toast("选择「其他」请填写具体说明", "error");
@@ -224,7 +224,7 @@ export default function ClaimDrawer({
             </div>
           </div>
           <div className="mt-3.5">
-            <label className="lbl">认领人自述特征 <span className="text-red-600">*</span> <span className="text-xs font-normal text-slate-400">（至少10字：颜色/品牌/内含物/磨损点，需与登记特征一致）</span></label>
+            <label className="lbl">认领人自述特征 <span className="text-red-600">{target.source === "患者报失" ? "" : "*"}</span> <span className="text-xs font-normal text-slate-400">{target.source === "患者报失" ? "（已引用报失原话，可修改）" : "（至少10字：颜色/品牌/内含物/磨损点，需与登记特征一致）"}</span></label>
             <textarea className="inp min-h-[70px]" value={claimerNote} onChange={(e) => setClaimerNote(e.target.value)} placeholder="如：蓝色折叠伞，伞柄缠了黄色胶带，伞面右下角有磨损" />
             {target.source === "患者报失" && (
               <div className="mt-1 text-xs leading-relaxed text-slate-400">

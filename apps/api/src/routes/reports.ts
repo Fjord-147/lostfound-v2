@@ -137,15 +137,13 @@ router.post("/:id/found-claim", async (req, res) => {
   if (!claimerName) return res.status(400).json({ ok: false, msg: "请填写认领人姓名" });
   if (!b.featureVerified) return res.status(400).json({ ok: false, msg: "请勾选已核对物品特征" });
 
-  // 与 /api/items/:id/claim 同款的防冒领校验（严格模式）
+  // 与 /api/items/:id/claim 同款的防冒领校验（严格模式）。
+  // 一步认领本身就是患者报失场景，自述特征默认引用报失原话，不作字数限制。
   const claimerPhone = String(b.claimerPhone || "").trim();
   if (!/^1[3-9]\d{9}$/.test(claimerPhone)) {
     return res.status(400).json({ ok: false, msg: "请填写认领人11位手机号（仅收手机号码）" });
   }
   const claimerNote = String(b.claimerNote || "").trim();
-  if (claimerNote.length < 10) {
-    return res.status(400).json({ ok: false, msg: "请填写认领人自述特征（至少10个字），如物品颜色/品牌/内含物" });
-  }
   if (HIGH_VALUE_CATEGORIES.includes(rep.itemCategory || "") && !b.claimerPhoto) {
     return res.status(400).json({ ok: false, msg: `「${rep.itemCategory}」类物品认领必须现场拍摄认领人照片` });
   }

@@ -186,7 +186,8 @@ function FoundClaimDrawer({ rep, me, onClose, onDone }: { rep: any; me: string; 
   useEffect(() => {
     if (rep) {
       setName(rep.ownerName || ""); setPhone(rep.ownerPhone || "");
-      setNote(""); setGroup(""); setGender(""); setVerified(false); setPhotos([]); setTime(nowLocalStr());
+      setNote(rep.description || ""); // 自述特征默认引用报失原话，可修改
+      setGroup(""); setGender(""); setVerified(false); setPhotos([]); setTime(nowLocalStr());
       setMismatchReason(""); setMismatchNote("");
     }
   }, [rep]);
@@ -198,7 +199,6 @@ function FoundClaimDrawer({ rep, me, onClose, onDone }: { rep: any; me: string; 
     e.preventDefault();
     if (!verified) return toast("请勾选已核对物品特征", "error");
     if (!/^1[3-9]\d{9}$/.test(phone.trim())) return toast("请填写认领人11位手机号（仅收手机号码）", "error");
-    if (note.trim().length < 10) return toast("请填写认领人自述特征（至少10个字）", "error");
     if (highValue && photos.length === 0) return toast(`「${rep.itemCategory}」类物品必须现场拍摄认领人照片`, "error");
     if (mismatchNeeded && !mismatchReason) return toast("认领手机号与报失手机号不一致，请勾选原因", "error");
     if (mismatchReason === "其他" && mismatchNote.trim().length < 2) return toast("选择「其他」请填写具体说明", "error");
@@ -255,7 +255,7 @@ function FoundClaimDrawer({ rep, me, onClose, onDone }: { rep: any; me: string; 
               <option value="">请选择</option><option value="男">男士</option><option value="女">女士</option>
             </select></div>
         </div>
-        <div className="mt-3.5"><label className="lbl">认领人自述特征 * <span className="text-xs font-normal text-slate-400">（至少10字，需与报失特征一致）</span></label>
+        <div className="mt-3.5"><label className="lbl">认领人自述特征 <span className="text-xs font-normal text-slate-400">（已引用报失原话，可修改）</span></label>
           <textarea className="inp min-h-[70px]" value={note} onChange={(e) => setNote(e.target.value)} placeholder="如：黑色钱包，内有医保卡和五十元现金，边角有磨损" /></div>
         {mismatchNeeded && (
           <div className="mt-3.5 rounded-lg border border-orange-300 bg-orange-50 px-3 py-2.5">

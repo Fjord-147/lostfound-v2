@@ -235,7 +235,8 @@ router.put("/:id/founder", async (req, res) => {
 // ===== POST /api/items/:id/claim —— 认领（keepClaim=true 时为修改认领信息）=====
 // 防冒领四道校验（新认领严格模式；编辑历史认领宽松模式）：
 //  D. 认领人电话必填且仅收 11 位手机号；高价值类别（证件/手机数码/钱包）必须现场拍照
-//  B. 认领人自述特征 ≥10 字（留痕，导医对照登记特征核对）
+//  B. 认领人自述特征 ≥10 字（留痕，导医对照登记特征核对）——但患者报失来源豁免：
+//     认领前已留过报失描述，原话即有效自述，不作字数限制
 //  C. 患者报失来源：认领手机号≠报失手机号 → 软拦截，需勾选原因（家属代领/号码已换/其他）
 //  A. 可顺带补录登记特征（老物品无描述时认领抽屉提供补录框）
 router.post("/:id/claim", async (req, res) => {
@@ -259,7 +260,7 @@ router.post("/:id/claim", async (req, res) => {
     if (!/^1[3-9]\d{9}$/.test(claimerPhone)) {
       return res.status(400).json({ ok: false, msg: "请填写认领人11位手机号（仅收手机号码）" });
     }
-    if (claimerNote.length < 10) {
+    if (item.source !== "患者报失" && claimerNote.length < 10) {
       return res.status(400).json({ ok: false, msg: "请填写认领人自述特征（至少10个字），如物品颜色/品牌/内含物" });
     }
     if (HIGH_VALUE_CATEGORIES.includes(item.category || "") && !b.claimerPhoto) {

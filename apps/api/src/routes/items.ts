@@ -128,12 +128,15 @@ router.get("/pending", async (req, res) => {
   const today = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
   const month = today.slice(0, 7);
 
-  const [todayCount, pendingCount, monthReturned, pendingReports, pendingItems] =
+  const [todayCount, pendingCount, monthReturned, todayReturned, pendingReports, pendingItems] =
     await Promise.all([
       prisma.item.count({ where: { createdAt: { gte: new Date(today + "T00:00:00") } } }),
       prisma.item.count({ where: { status: "待认领" } }),
       prisma.item.count({
         where: { status: "已认领", claimedAt: { startsWith: month } },
+      }),
+      prisma.item.count({
+        where: { status: "已认领", claimedAt: { startsWith: today } },
       }),
       prisma.lostReport.count({ where: { status: "待查找" } }),
       prisma.item.findMany({
@@ -144,7 +147,7 @@ router.get("/pending", async (req, res) => {
     ]);
   res.json({
     ok: true,
-    stats: { todayCount, pendingCount, monthReturned, pendingReports },
+    stats: { todayCount, pendingCount, monthReturned, todayReturned, pendingReports },
     items: pendingItems.map(out),
   });
 });

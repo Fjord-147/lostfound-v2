@@ -196,8 +196,11 @@ export default function ItemsPage() {
                     <td className="px-3 py-2">{it.foundLocation || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2">{fmtDT(it.foundTime) || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2">
-                      <span className={`tag ${it.status === "已认领" ? "tag-returned" : "tag-pending"}`}>{it.status}</span>
-                      {it.source === "患者报失" && <span className="tag tag-source ml-1">🙋</span>}
+                      {it.source === "患者报失" ? (
+                        <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700">{it.status}🙋</span>
+                      ) : (
+                        <span className={`tag ${it.status === "已认领" ? "tag-returned" : "tag-pending"}`}>{it.status}{it.status === "待认领" ? "👩‍⚕️" : ""}</span>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       {it.source === "患者报失" ? <span className="text-slate-300">—</span> : (
@@ -245,8 +248,11 @@ export default function ItemsPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[13px] text-slate-500">编号 {it.code}</span>
                   <span className="text-xl">{CATEGORY_ICONS[it.category || ""]}</span>
-                  <span className={`tag ${it.status === "已认领" ? "tag-returned" : "tag-pending"}`}>{it.status}</span>
-                  {it.source === "患者报失" && <span className="tag tag-source">🙋 患者报失</span>}
+                  {it.source === "患者报失" ? (
+                    <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700">{it.status}🙋患者报失</span>
+                  ) : (
+                    <span className={`tag ${it.status === "已认领" ? "tag-returned" : "tag-pending"}`}>{it.status}{it.status === "待认领" ? "👩‍⚕️" : ""}</span>
+                  )}
                 </div>
                 <div className="my-1 line-clamp-2 min-h-[46px] text-[17px] font-semibold leading-snug">{it.name}</div>
                 {tps.length > 0 ? (

@@ -9,8 +9,8 @@ import ClaimDrawer from "@/components/ClaimDrawer";
 
 // 表格列（表头可拖拽调宽，宽度记忆在 localStorage）
 // 待认领视图：8列；全部/已认领视图：补回 捡到人/认领人/认领时间（共11列）
-const PENDING_COLS = ["照片", "编号", "物品", "存放", "捡到", "登记人", "状态", "操作"];
-const ALL_COLS = ["照片", "编号", "物品", "存放", "捡到", "登记人", "捡到人", "认领人", "认领时间", "状态", "操作"];
+const PENDING_COLS = ["照片", "编号", "物品", "存放", "捡到区域", "登记人", "状态", "操作"];
+const ALL_COLS = ["照片", "编号", "物品", "存放", "捡到区域", "登记人", "捡到人", "认领人", "认领时间", "状态", "操作"];
 const DEFAULT_COLW: Record<string, number> = { 照片: 60, 编号: 116, 状态: 110, 操作: 200 };
 
 export default function ItemsPage() {
@@ -32,6 +32,20 @@ export default function ItemsPage() {
   const [noFeature, setNoFeature] = useState(false);
   // 列集随状态筛选切换：待认领 8 列；全部/已认领补回 捡到人/认领人/认领时间
   const cols = noFeature || status === "待认领" ? PENDING_COLS : ALL_COLS;
+  // 列显隐（列设置面板控制，localStorage 记忆；"操作"列强制保留）
+  const [colHidden, setColHidden] = useState<Record<string, boolean>>({});
+  const [colsPanel, setColsPanel] = useState(false);
+  useEffect(() => {
+    try { setColHidden(JSON.parse(localStorage.getItem("lf_colhide") || "{}")); } catch { /* 忽略损坏记忆 */ }
+  }, []);
+  const visibleCols = cols.filter((c) => c === "操作" || !colHidden[c]);
+  function toggleCol(col: string) {
+    setColHidden((prev) => {
+      const next = { ...prev, [col]: !prev[col] };
+      try { localStorage.setItem("lf_colhide", JSON.stringify(next)); } catch { /* 私密模式 */ }
+      return next;
+    });
+  }
   // 列宽：默认 + localStorage 记忆，表头右缘拖拽调整（WPS 式）
   const [colWidths, setColWidths] = useState<Record<string, number>>({ ...DEFAULT_COLW });
   const [tipHide, setTipHide] = useState(false);
@@ -117,7 +131,7 @@ export default function ItemsPage() {
       {/* 筛选 + 视图切换 */}
       <div className="card mb-4 p-4">
         <div className="mb-3 flex flex-wrap gap-2">
-          {["待认领", "all"].map((s) => (
+          {["all", "待认领"].map((s) => (
             <button key={s} onClick={() => { setStatus(s); setNoFeature(false); }}
               className={`rounded-full px-4 py-1.5 text-sm ${!noFeature && status === s ? "bg-brand text-white" : "border border-slate-200 bg-white text-slate-500"}`}>
               {s === "all" ? "全部" : s}
@@ -130,9 +144,27 @@ export default function ItemsPage() {
           <Link href="/admin/claims" className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-500 no-underline">
             已认领管理 ✅ →
           </Link>
-          <div className="ml-auto flex overflow-hidden rounded-lg border border-slate-300">
-            <button onClick={() => switchView("table")} className={`px-3.5 py-1.5 text-sm ${view === "table" ? "bg-brand text-white" : "bg-white text-slate-500"}`}>📋 表格</button>
-            <button onClick={() => switchView("card")} className={`px-3.5 py-1.5 text-sm ${view === "card" ? "bg-brand text-white" : "bg-white text-slate-500"}`}>🎴 卡片</button>
+          <div className="relative ml-auto flex items-center gap-2">
+            <button onClick={() => setColsPanel((v) => !v)} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-500 hover:border-brand hover:text-brand">
+              ⚙️ 列设置
+            </button>
+            <div className="flex overflow-hidden rounded-lg border border-slate-300">
+              <button onClick={() => switchView("table")} className={`px-3.5 py-1.5 text-sm ${view === "table" ? "bg-brand text-white" : "bg-white text-slate-500"}`}>📋 表格</button>
+              <button onClick={() => switchView("card")} className={`px-3.5 py-1.5 text-sm ${view === "card" ? "bg-brand text-white" : "bg-white text-slate-500"}`}>🎴 卡片</button>
+            </div>
+            {colsPanel && (
+              <div className="absolute right-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                <div className="mb-1 px-2 text-xs font-semibold text-slate-400">勾选要显示的列</div>
+                {ALL_COLS.map((c) => (
+                  <label key={c} className={`flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-50 ${c === "操作" ? "opacity-50" : ""}`}>
+                    <input type="checkbox" className="h-4 w-4" disabled={c === "操作"}
+                      checked={c === "操作" || !colHidden[c]}
+                      onChange={() => toggleCol(c)} />
+                    {c}
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -162,10 +194,10 @@ export default function ItemsPage() {
           <table ref={tableRef} className="items-fixed w-full text-sm" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr className="bg-brand-light text-left text-brand-dark">
-                {cols.map((h, i) => (
+                {visibleCols.map((h, i) => (
                   <th key={h} className="group relative whitespace-nowrap px-3 py-2.5 font-semibold" style={colWidths[h] ? { width: colWidths[h] } : undefined}>
                     {h}
-                    {i < cols.length - 1 && (
+                    {i < visibleCols.length - 1 && (
                       <span className="absolute inset-y-0 right-0 flex w-[7px] cursor-col-resize select-none items-center justify-center"
                         title="按住拖拽调整列宽（到顶即全显示）" onMouseDown={(e) => startResize(h, i, e)}>
                         <span className="h-4 w-px rounded-full bg-slate-300 transition-all group-hover:h-5 group-hover:w-[3px] group-hover:bg-brand" />
@@ -178,60 +210,60 @@ export default function ItemsPage() {
             <tbody>
               {items.map((it) => {
                 const tps = photosOf(it);
-                return (
-                  <tr key={it.id} className="border-t border-slate-100 hover:bg-slate-50">
-                    <td className="px-3 py-2">
-                      {tps.length ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={`/api/upload/files/${tps[0]}`} onClick={() => setZoom({ photos: tps, start: 0 })}
-                          className="h-11 w-11 cursor-zoom-in rounded border border-slate-200 object-cover transition hover:scale-110" alt="" />
-                      ) : <span className="text-xl">{CATEGORY_ICONS[it.category || ""] || "📦"}</span>}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-slate-500">{it.code}</td>
-                    <td className="px-3 py-2">
-                      <div className="font-medium">{it.name}</div>
-                      {it.description ? (
-                        <div className="mt-0.5 line-clamp-2 whitespace-normal text-xs leading-snug text-slate-400" title={it.description}>{it.description}</div>
+                const pendingMode = noFeature || status === "待认领";
+                const cellOf: Record<string, (x: any) => React.ReactNode> = {
+                  "照片": (x) => tps.length ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={`/api/upload/files/${tps[0]}`} onClick={() => setZoom({ photos: tps, start: 0 })}
+                      className="h-11 w-11 cursor-zoom-in rounded border border-slate-200 object-cover transition hover:scale-110" alt="" />
+                  ) : <span className="text-xl">{CATEGORY_ICONS[x.category || ""] || "📦"}</span>,
+                  "编号": (x) => <span className="text-slate-500">{x.code}</span>,
+                  "物品": (x) => (
+                    <>
+                      <div className="font-medium">{x.name}</div>
+                      {x.description ? (
+                        <div className="mt-0.5 line-clamp-2 whitespace-normal text-xs leading-snug text-slate-400" title={x.description}>{x.description}</div>
                       ) : (
                         <div className="mt-0.5 text-xs text-amber-500">⚠️ 缺特征，认领无法核对</div>
                       )}
-                      {(noFeature || status === "待认领") && it.status === "已认领" && (
-                        <div className="mt-0.5 text-xs text-slate-400">
-                          {it.claimerName} · {it.claimedAt || "—"} 取走
-                        </div>
+                      {pendingMode && x.status === "已认领" && (
+                        <div className="mt-0.5 text-xs text-slate-400">{x.claimerName} · {x.claimedAt || "—"} 取走</div>
                       )}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2">{it.storageLocation || "—"}</td>
-                    <td className="px-3 py-2 text-[13px]">
-                      <div className="truncate">{it.foundLocation || "—"}</div>
-                      <div className="text-xs text-slate-400">{fmtDT(it.foundTime) || "—"}</div>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-[13px]">{it.registeredBy || "—"}</td>
-                    {!(noFeature || status === "待认领") && (
-                      <>
-                        <td className="whitespace-nowrap px-3 py-2 text-[13px]">{it.source === "患者报失" ? "患者报失" : it.founder || "—"}</td>
-                        <td className="whitespace-nowrap px-3 py-2 text-[13px]">{it.claimerName || "—"}</td>
-                        <td className="whitespace-nowrap px-3 py-2 text-[13px]">{it.claimedAt || "—"}</td>
-                      </>
-                    )}
-                    <td className="whitespace-nowrap px-3 py-2">
-                      {it.source === "患者报失" ? (
-                        <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700">{it.status}🙋</span>
-                      ) : (
-                        <span className={`tag ${it.status === "已认领" ? "tag-returned" : "tag-pending"}`}>{it.status}{it.status === "待认领" ? "👩‍⚕️" : ""}</span>
+                    </>
+                  ),
+                  "存放": (x) => x.storageLocation || "—",
+                  "捡到区域": (x) => (
+                    <>
+                      <div className="truncate">{x.foundLocation || "—"}</div>
+                      <div className="text-xs text-slate-400">{fmtDT(x.foundTime) || "—"}</div>
+                    </>
+                  ),
+                  "登记人": (x) => x.registeredBy || "—",
+                  "捡到人": (x) => x.source === "患者报失" ? "患者报失" : x.founder || "—",
+                  "认领人": (x) => x.claimerName || "—",
+                  "认领时间": (x) => x.claimedAt || "—",
+                  "状态": (x) => x.source === "患者报失" ? (
+                    <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700">{x.status}🙋</span>
+                  ) : (
+                    <span className={`tag ${x.status === "已认领" ? "tag-returned" : "tag-pending"}`}>{x.status}{x.status === "待认领" ? "👩‍⚕️" : ""}</span>
+                  ),
+                  "操作": (x) => (
+                    <div className="flex gap-1.5">
+                      <button className="btn btn-outline btn-sm" onClick={() => setEditItem(x)}>编辑</button>
+                      {x.source === "患者报失" && (
+                        <button className="btn btn-sm !bg-emerald-600 !from-emerald-600 !to-emerald-700" title="确认找到：患者进度条显示「已找到，请尽快来领」" onClick={() => confirmFoundItem(x)}>找到</button>
                       )}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2">
-                      <div className="flex gap-1.5">
-                        <button className="btn btn-outline btn-sm" onClick={() => setEditItem(it)}>编辑</button>
-                        {it.source === "患者报失" && (
-                          <button className="btn btn-sm !bg-emerald-600 !from-emerald-600 !to-emerald-700" title="确认找到：患者进度条显示「已找到，请尽快来领」" onClick={() => confirmFoundItem(it)}>找到</button>
-                        )}
-                        {it.status === "待认领" && (
-                          <button className="btn btn-sm" onClick={() => { setClaimId(it.id); setClaimOpen(true); }}>认领</button>
-                        )}
-                      </div>
-                    </td>
+                      {x.status === "待认领" && (
+                        <button className="btn btn-sm" onClick={() => { setClaimId(x.id); setClaimOpen(true); }}>认领</button>
+                      )}
+                    </div>
+                  ),
+                };
+                return (
+                  <tr key={it.id} className="border-t border-slate-100 hover:bg-slate-50">
+                    {visibleCols.map((col) => (
+                      <td key={col} className={`px-3 py-2 text-[13px] ${["存放", "捡到人", "认领人", "认领时间", "登记人", "编号"].includes(col) ? "whitespace-nowrap" : ""}`}>{cellOf[col]?.(it)}</td>
+                    ))}
                   </tr>
                 );
               })}

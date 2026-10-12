@@ -156,7 +156,7 @@ export default function ItemsPage() {
           </Link>
           <div ref={colsPanelRef} className="relative ml-auto flex items-center gap-2">
             <button onClick={() => setColsPanel((v) => !v)} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-500 hover:border-brand hover:text-brand">
-              ⚙️ 列设置
+              ⚙️ 列表设置
             </button>
             <div className="flex overflow-hidden rounded-lg border border-slate-300">
               <button onClick={() => switchView("table")} className={`px-3.5 py-1.5 text-sm ${view === "table" ? "bg-brand text-white" : "bg-white text-slate-500"}`}>📋 表格</button>
@@ -164,7 +164,7 @@ export default function ItemsPage() {
             </div>
             {colsPanel && (
               <div className="absolute right-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                <div className="mb-1 px-2 text-xs font-semibold text-slate-400">勾选要显示的列</div>
+                <div className="mb-1 px-2 text-xs font-semibold text-slate-400">勾选列表要显示的项</div>
                 {ALL_COLS.map((c) => (
                   <label key={c} className={`flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-50 ${c === "操作" ? "opacity-50" : ""}`}>
                     <input type="checkbox" className="h-4 w-4" disabled={c === "操作"}

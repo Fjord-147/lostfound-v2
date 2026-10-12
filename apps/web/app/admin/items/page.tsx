@@ -35,6 +35,16 @@ export default function ItemsPage() {
   // 列显隐（列设置面板控制，localStorage 记忆；"操作"列强制保留）
   const [colHidden, setColHidden] = useState<Record<string, boolean>>({});
   const [colsPanel, setColsPanel] = useState(false);
+  const colsPanelRef = useRef<HTMLDivElement>(null);
+  // 点击面板以外任意处自动收起（勾选状态记忆在 colHidden，不收起影响）
+  useEffect(() => {
+    if (!colsPanel) return;
+    const onDown = (e: MouseEvent) => {
+      if (colsPanelRef.current && !colsPanelRef.current.contains(e.target as Node)) setColsPanel(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [colsPanel]);
   useEffect(() => {
     try { setColHidden(JSON.parse(localStorage.getItem("lf_colhide") || "{}")); } catch { /* 忽略损坏记忆 */ }
   }, []);
@@ -139,12 +149,12 @@ export default function ItemsPage() {
           ))}
           <button onClick={() => setNoFeature(true)}
             className={`rounded-full px-4 py-1.5 text-sm ${noFeature ? "bg-amber-500 text-white" : "border border-amber-300 bg-white text-amber-600"}`}>
-            ⚠️ 缺特征
+            缺特征
           </button>
           <Link href="/admin/claims" className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-500 no-underline">
             已认领管理 ✅ →
           </Link>
-          <div className="relative ml-auto flex items-center gap-2">
+          <div ref={colsPanelRef} className="relative ml-auto flex items-center gap-2">
             <button onClick={() => setColsPanel((v) => !v)} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-500 hover:border-brand hover:text-brand">
               ⚙️ 列设置
             </button>

@@ -160,7 +160,6 @@ export default function ItemsPage() {
                         {it.status === "待认领" && (
                           <button className="btn btn-sm" onClick={() => { setClaimId(it.id); setClaimOpen(true); }}>认领</button>
                         )}
-                        <button className="btn btn-danger btn-sm !px-2.5" title="删除" onClick={() => setDelItem(it)}>🗑</button>
                       </div>
                     </td>
                   </tr>
@@ -245,7 +244,8 @@ export default function ItemsPage() {
         onDone={(msg) => { toast(msg, "success"); load(); }} />
 
       {/* 编辑弹窗 */}
-      <EditModal item={editItem} onClose={() => setEditItem(null)} onSaved={() => { setEditItem(null); load(); }} />
+      <EditModal item={editItem} onClose={() => setEditItem(null)} onSaved={() => { setEditItem(null); load(); }}
+        onDelete={(it) => { setEditItem(null); setDelItem(it); }} />
 
       {/* 删除确认 */}
       <ConfirmDanger
@@ -266,7 +266,7 @@ export default function ItemsPage() {
 }
 
 /* ===== 编辑物品弹窗 ===== */
-function EditModal({ item, onClose, onSaved }: { item: any; onClose: () => void; onSaved: () => void }) {
+function EditModal({ item, onClose, onSaved, onDelete }: { item: any; onClose: () => void; onSaved: () => void; onDelete: (it: any) => void }) {
   const photos = item ? photosOf(item) : [];
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   useEffect(() => {
@@ -368,7 +368,13 @@ function EditModal({ item, onClose, onSaved }: { item: any; onClose: () => void;
         </div>
       </div>
 
-        <div className="flex gap-3">
+        <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-3">
+          <div className="mb-1.5 text-[13px] font-semibold text-red-700">危险操作</div>
+          <button type="button" className="btn btn-danger btn-sm w-full" onClick={() => onDelete(item)}>
+            🗑 删除此物品（将弹出确认，输入「确认」后执行）
+          </button>
+        </div>
+        <div className="mt-4 flex gap-3">
           <button type="button" className="btn btn-outline flex-1" onClick={onClose}>取消</button>
           <button className="btn flex-1">保存修改</button>
         </div>

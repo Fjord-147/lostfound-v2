@@ -8,7 +8,7 @@ import { toast, PhotoZoom, Modal, ConfirmDanger } from "@/components/ui";
 import ClaimDrawer from "@/components/ClaimDrawer";
 
 // 表格列（表头可拖拽调宽，宽度记忆在 localStorage）
-const COLS = ["照片", "编号", "物品", "存放", "捡到", "状态", "操作"];
+const COLS = ["照片", "编号", "物品", "存放", "捡到", "登记人", "状态", "操作"];
 const DEFAULT_COLW: Record<string, number> = { 照片: 60, 编号: 116, 状态: 110, 操作: 200 };
 
 export default function ItemsPage() {
@@ -202,6 +202,7 @@ export default function ItemsPage() {
                       <div className="truncate">{it.foundLocation || "—"}</div>
                       <div className="text-xs text-slate-400">{fmtDT(it.foundTime) || "—"}</div>
                     </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-[13px]">{it.registeredBy || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2">
                       {it.source === "患者报失" ? (
                         <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700">{it.status}🙋</span>

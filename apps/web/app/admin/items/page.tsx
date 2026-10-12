@@ -29,6 +29,8 @@ export default function ItemsPage() {
   const [noFeature, setNoFeature] = useState(false);
   // 列宽：默认 + localStorage 记忆，表头右缘拖拽调整（WPS 式）
   const [colWidths, setColWidths] = useState<Record<string, number>>({ ...DEFAULT_COLW });
+  const [tipHide, setTipHide] = useState(false);
+  useEffect(() => { setTipHide(!!localStorage.getItem("lf_colw_tip")); }, []);
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("lf_colw") || "{}");
@@ -136,16 +138,28 @@ export default function ItemsPage() {
 
       {/* 表格视图 */}
       {view === "table" && (
+        <>
+        {!tipHide && (
+          <div className="mb-3 flex items-center gap-2 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-xs text-slate-500">
+            💡 按住表头右侧的小竖条
+            <span className="inline-block h-3.5 w-[3px] rounded-full bg-slate-400 align-middle" />
+            可以左右拖拽调整列宽，调好的布局自动记住
+            <button className="ml-auto text-slate-300 hover:text-slate-500" title="不再提示"
+              onClick={() => { setTipHide(true); try { localStorage.setItem("lf_colw_tip", "1"); } catch { /* 私密模式 */ } }}>✕</button>
+          </div>
+        )}
         <div className="card overflow-x-auto p-0">
           <table className="items-fixed w-full text-sm" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr className="bg-brand-light text-left text-brand-dark">
                 {COLS.map((h, i) => (
-                  <th key={h} className="relative whitespace-nowrap px-3 py-2.5 font-semibold" style={colWidths[h] ? { width: colWidths[h] } : undefined}>
+                  <th key={h} className="group relative whitespace-nowrap border-r border-slate-200 px-3 py-2.5 font-semibold last:border-r-0" style={colWidths[h] ? { width: colWidths[h] } : undefined}>
                     {h}
                     {i < COLS.length - 1 && (
-                      <span className="absolute inset-y-0 right-0 w-2 cursor-col-resize select-none hover:bg-brand/40" title="按住拖拽调整列宽"
-                        onMouseDown={(e) => startResize(h, e)} />
+                      <span className="absolute inset-y-0 right-0 flex w-4 cursor-col-resize select-none items-center justify-center"
+                        title="按住拖拽调整列宽" onMouseDown={(e) => startResize(h, e)}>
+                        <span className="h-4 w-[3px] rounded-full bg-slate-300 transition group-hover:bg-brand group-hover:h-5" />
+                      </span>
                     )}
                   </th>
                 ))}
@@ -204,6 +218,7 @@ export default function ItemsPage() {
           </table>
           {items.length === 0 && <div className="py-10 text-center text-slate-400">没有符合条件的记录</div>}
         </div>
+        </>
       )}
 
       {/* 卡片视图 */}

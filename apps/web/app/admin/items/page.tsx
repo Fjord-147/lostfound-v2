@@ -8,13 +8,15 @@ import { toast, PhotoZoom, Modal, ConfirmDanger } from "@/components/ui";
 import ClaimDrawer from "@/components/ClaimDrawer";
 
 // 表格列（表头可拖拽调宽，宽度记忆在 localStorage）
-const COLS = ["照片", "编号", "物品", "存放", "捡到", "登记人", "状态", "操作"];
+// 待认领视图：8列；全部/已认领视图：补回 捡到人/认领人/认领时间（共11列）
+const PENDING_COLS = ["照片", "编号", "物品", "存放", "捡到", "登记人", "状态", "操作"];
+const ALL_COLS = ["照片", "编号", "物品", "存放", "捡到", "登记人", "捡到人", "认领人", "认领时间", "状态", "操作"];
 const DEFAULT_COLW: Record<string, number> = { 照片: 60, 编号: 116, 状态: 110, 操作: 200 };
 
 export default function ItemsPage() {
   const tableRef = useRef<HTMLTableElement>(null);
-  const [items, setItems] = useState<any[]>([]);
   const [status, setStatus] = useState("待认领");
+  const [items, setItems] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -158,7 +160,7 @@ export default function ItemsPage() {
           <table ref={tableRef} className="items-fixed w-full text-sm" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr className="bg-brand-light text-left text-brand-dark">
-                {COLS.map((h, i) => (
+                {(noFeature || status === "待认领" ? PENDING_COLS : ALL_COLS).map((h, i) => (
                   <th key={h} className="group relative whitespace-nowrap px-3 py-2.5 font-semibold" style={colWidths[h] ? { width: colWidths[h] } : undefined}>
                     {h}
                     {i < COLS.length - 1 && (
@@ -191,7 +193,7 @@ export default function ItemsPage() {
                       ) : (
                         <div className="mt-0.5 text-xs text-amber-500">⚠️ 缺特征，认领无法核对</div>
                       )}
-                      {it.status === "已认领" && (
+                      {(noFeature || status === "待认领") && it.status === "已认领" && (
                         <div className="mt-0.5 text-xs text-slate-400">
                           {it.claimerName} · {it.claimedAt || "—"} 取走
                         </div>
@@ -203,6 +205,13 @@ export default function ItemsPage() {
                       <div className="text-xs text-slate-400">{fmtDT(it.foundTime) || "—"}</div>
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-[13px]">{it.registeredBy || "—"}</td>
+                    {!(noFeature || status === "待认领") && (
+                      <>
+                        <td className="whitespace-nowrap px-3 py-2 text-[13px]">{it.source === "患者报失" ? "患者报失" : it.founder || "—"}</td>
+                        <td className="whitespace-nowrap px-3 py-2 text-[13px]">{it.claimerName || "—"}</td>
+                        <td className="whitespace-nowrap px-3 py-2 text-[13px]">{it.claimedAt || "—"}</td>
+                      </>
+                    )}
                     <td className="whitespace-nowrap px-3 py-2">
                       {it.source === "患者报失" ? (
                         <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700">{it.status}🙋</span>

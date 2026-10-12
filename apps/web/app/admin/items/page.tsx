@@ -22,17 +22,25 @@ export default function ItemsPage() {
   const [delItem, setDelItem] = useState<any>(null);
   const [me, setMe] = useState("");
 
+  const [noFeature, setNoFeature] = useState(false);
+
   useEffect(() => {
     // 无记忆时按屏幕宽默认：手机=卡片（表格在窄屏太挤）
     const saved = localStorage.getItem("lf_view") as "table" | "card" | null;
     setView(saved || (window.innerWidth < 768 ? "card" : "table"));
     api("/api/auth/me").then((d) => d.ok && setMe(d.user.name));
+    // 从工作台「缺特征提醒」进来时自动打开缺特征筛选
+    if (new URLSearchParams(window.location.search).get("noFeature")) setNoFeature(true);
   }, []);
 
   const load = useCallback(() => {
+    if (noFeature) {
+      api("/api/items/no-feature").then((d) => d.ok && setItems(d.items));
+      return;
+    }
     const p = new URLSearchParams({ status, ...(q && { q }), ...(dateFrom && { dateFrom }), ...(dateTo && { dateTo }) });
     api(`/api/items?${p}`).then((d) => d.ok && setItems(d.items));
-  }, [status, q, dateFrom, dateTo]);
+  }, [status, q, dateFrom, dateTo, noFeature]);
   useEffect(() => { load(); }, [load]);
 
   function switchView(v: "table" | "card") {
@@ -69,11 +77,15 @@ export default function ItemsPage() {
       <div className="card mb-4 p-4">
         <div className="mb-3 flex flex-wrap gap-2">
           {["待认领", "all"].map((s) => (
-            <button key={s} onClick={() => setStatus(s)}
-              className={`rounded-full px-4 py-1.5 text-sm ${status === s ? "bg-brand text-white" : "border border-slate-200 bg-white text-slate-500"}`}>
+            <button key={s} onClick={() => { setStatus(s); setNoFeature(false); }}
+              className={`rounded-full px-4 py-1.5 text-sm ${!noFeature && status === s ? "bg-brand text-white" : "border border-slate-200 bg-white text-slate-500"}`}>
               {s === "all" ? "全部" : s}
             </button>
           ))}
+          <button onClick={() => setNoFeature(true)}
+            className={`rounded-full px-4 py-1.5 text-sm ${noFeature ? "bg-amber-500 text-white" : "border border-amber-300 bg-white text-amber-600"}`}>
+            ⚠️ 缺特征
+          </button>
           <Link href="/admin/claims" className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-500 no-underline">
             已认领管理 ✅ →
           </Link>

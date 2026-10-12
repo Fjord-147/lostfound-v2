@@ -121,12 +121,34 @@ router.get("/", async (req, res) => {
   res.json({ ok: true, items: items.map(out) });
 });
 
+// ===== GET /api/items/no-feature —— 缺特征清单：待认领但描述为空或<5字 =====
+// 防冒领的"核对密钥"缺失清单，导医抽空补录（补录走 PUT /:id）
+router.get("/no-feature", async (_req, res) => {
+  const rows = await prisma.$queryRaw<Array<{ id: number }>>`
+    SELECT id FROM items
+    WHERE status = '待认领' AND (description IS NULL OR char_length(description) < 5)
+    ORDER BY id ASC
+  `;
+  const items = await prisma.item.findMany({
+    where: { id: { in: rows.map((r) => r.id) } },
+    orderBy: { id: "asc" },
+  });
+  res.json({ ok: true, count: items.length, items: items.map(out) });
+});
+
 // ===== GET /api/items/pending —— 工作台：统计 + 待认领清单 =====
 router.get("/pending", async (req, res) => {
   const now = new Date();
   const p = (n: number) => String(n).padStart(2, "0");
   const today = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
   const month = today.slice(0, 7);
+
+  const rows = await prisma.$queryRaw<Array<{ id: number }>>`
+    SELECT id FROM items
+    WHERE status = '待认领' AND (description IS NULL OR char_length(description) < 5)
+    ORDER BY id ASC
+  `;
+  const noFeatureIds = rows.map((r) => r.id);
 
   const [todayCount, pendingCount, monthReturned, todayReturned, pendingReports, pendingItems] =
     await Promise.all([
@@ -148,7 +170,7 @@ router.get("/pending", async (req, res) => {
     ]);
   res.json({
     ok: true,
-    stats: { todayCount, pendingCount, monthReturned, todayReturned, pendingReports },
+    stats: { todayCount, pendingCount, monthReturned, todayReturned, pendingReports, noFeatureCount: noFeatureIds.length },
     items: pendingItems.map(out),
   });
 });

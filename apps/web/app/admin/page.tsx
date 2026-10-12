@@ -85,6 +85,14 @@ export default function AdminHome() {
         </Link>
       )}
 
+      {/* 缺特征提醒：防冒领"核对密钥"缺失，补录后自动消失 */}
+      {stats.noFeatureCount > 0 && (
+        <Link href="/admin/items?noFeature=1" className="mb-5 block rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800 no-underline">
+          ⚠️ <strong>{stats.noFeatureCount}</strong> 件在库物品缺特征描述，认领时无法核对身份——
+          看到实物请顺手补录（编辑里填特征），点击去补 →
+        </Link>
+      )}
+
       {/* 统计卡：点击弹出对应明细 */}
       <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[

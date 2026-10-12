@@ -30,6 +30,8 @@ export default function ItemsPage() {
   const [me, setMe] = useState("");
 
   const [noFeature, setNoFeature] = useState(false);
+  // 列集随状态筛选切换：待认领 8 列；全部/已认领补回 捡到人/认领人/认领时间
+  const cols = noFeature || status === "待认领" ? PENDING_COLS : ALL_COLS;
   // 列宽：默认 + localStorage 记忆，表头右缘拖拽调整（WPS 式）
   const [colWidths, setColWidths] = useState<Record<string, number>>({ ...DEFAULT_COLW });
   const [tipHide, setTipHide] = useState(false);
@@ -160,10 +162,10 @@ export default function ItemsPage() {
           <table ref={tableRef} className="items-fixed w-full text-sm" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr className="bg-brand-light text-left text-brand-dark">
-                {(noFeature || status === "待认领" ? PENDING_COLS : ALL_COLS).map((h, i) => (
+                {cols.map((h, i) => (
                   <th key={h} className="group relative whitespace-nowrap px-3 py-2.5 font-semibold" style={colWidths[h] ? { width: colWidths[h] } : undefined}>
                     {h}
-                    {i < COLS.length - 1 && (
+                    {i < cols.length - 1 && (
                       <span className="absolute inset-y-0 right-0 flex w-[7px] cursor-col-resize select-none items-center justify-center"
                         title="按住拖拽调整列宽（到顶即全显示）" onMouseDown={(e) => startResize(h, i, e)}>
                         <span className="h-4 w-px rounded-full bg-slate-300 transition-all group-hover:h-5 group-hover:w-[3px] group-hover:bg-brand" />

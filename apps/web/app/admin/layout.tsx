@@ -12,6 +12,7 @@ const NAV = [
   { href: "/admin/claims", label: "认领管理", icon: "✅" },
   { href: "/admin/reports", label: "报失处理", icon: "📬" },
   { href: "/admin/stats", label: "统计导出", icon: "📊" },
+  { href: "/admin/guide", label: "功能介绍", icon: "❓" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -8,8 +8,8 @@ import { toast, PhotoZoom, Modal, ConfirmDanger } from "@/components/ui";
 import ClaimDrawer from "@/components/ClaimDrawer";
 
 // 表格列（表头可拖拽调宽，宽度记忆在 localStorage）
-const COLS = ["照片", "编号", "名称", "类别", "捡到地点", "捡到时间", "状态", "捡到人", "登记人", "认领人", "认领时间", "操作"];
-const DEFAULT_COLW: Record<string, number> = { 照片: 60, 编号: 116, 类别: 100, 状态: 96, 捡到时间: 116, 认领时间: 116, 操作: 230 };
+const COLS = ["照片", "编号", "物品", "存放", "捡到", "状态", "操作"];
+const DEFAULT_COLW: Record<string, number> = { 照片: 60, 编号: 116, 状态: 110, 操作: 200 };
 
 export default function ItemsPage() {
   const tableRef = useRef<HTMLTableElement>(null);
@@ -105,13 +105,6 @@ export default function ItemsPage() {
     setCarousel((i) => (i + d + len) % len);
   }
 
-  // 表格内联改捡到人
-  async function saveFounder(it: any, founder: string) {
-    const d = await api(`/api/items/${it.id}/founder`, { method: "PUT", body: JSON.stringify({ founder }) });
-    toast(d.msg, d.ok ? "success" : "error");
-    if (d.ok) setItems((l) => l.map((x) => (x.id === it.id ? { ...x, founder } : x)));
-  }
-
   return (
     <div>
       <h1 className="text-[22px] font-bold">📋 失物总表</h1>
@@ -188,13 +181,27 @@ export default function ItemsPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={`/api/upload/files/${tps[0]}`} onClick={() => setZoom({ photos: tps, start: 0 })}
                           className="h-11 w-11 cursor-zoom-in rounded border border-slate-200 object-cover transition hover:scale-110" alt="" />
-                      ) : <span className="text-slate-300">📦</span>}
+                      ) : <span className="text-xl">{CATEGORY_ICONS[it.category || ""] || "📦"}</span>}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2">{it.code}</td>
-                    <td className="px-3 py-2 font-medium">{it.name}</td>
-                    <td className="whitespace-nowrap px-3 py-2">{it.category || "—"}</td>
-                    <td className="px-3 py-2">{it.foundLocation || "—"}</td>
-                    <td className="whitespace-nowrap px-3 py-2">{fmtDT(it.foundTime) || "—"}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-slate-500">{it.code}</td>
+                    <td className="px-3 py-2">
+                      <div className="font-medium">{it.name}</div>
+                      {it.description ? (
+                        <div className="mt-0.5 line-clamp-2 whitespace-normal text-xs leading-snug text-slate-400" title={it.description}>{it.description}</div>
+                      ) : (
+                        <div className="mt-0.5 text-xs text-amber-500">⚠️ 缺特征，认领无法核对</div>
+                      )}
+                      {it.status === "已认领" && (
+                        <div className="mt-0.5 text-xs text-slate-400">
+                          {it.claimerName} · {it.claimedAt || "—"} 取走
+                        </div>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2">{it.storageLocation || "—"}</td>
+                    <td className="px-3 py-2 text-[13px]">
+                      <div className="truncate">{it.foundLocation || "—"}</div>
+                      <div className="text-xs text-slate-400">{fmtDT(it.foundTime) || "—"}</div>
+                    </td>
                     <td className="whitespace-nowrap px-3 py-2">
                       {it.source === "患者报失" ? (
                         <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700">{it.status}🙋</span>
@@ -202,20 +209,6 @@ export default function ItemsPage() {
                         <span className={`tag ${it.status === "已认领" ? "tag-returned" : "tag-pending"}`}>{it.status}{it.status === "待认领" ? "👩‍⚕️" : ""}</span>
                       )}
                     </td>
-                    <td className="px-3 py-2">
-                      {it.source === "患者报失" ? <span className="text-slate-300">—</span> : (
-                        <input
-                          defaultValue={it.founder || ""}
-                          onBlur={(e) => e.target.value.trim() !== (it.founder || "") && saveFounder(it, e.target.value.trim())}
-                          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-                          className="w-20 rounded border-b border-dashed border-brand px-1 py-0.5 outline-none focus:bg-brand-light"
-                          title="点击修改捡到人"
-                        />
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2">{it.registeredBy || "—"}</td>
-                    <td className="px-3 py-2">{it.claimerName || "—"}</td>
-                    <td className="whitespace-nowrap px-3 py-2">{it.claimedAt || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2">
                       <div className="flex gap-1.5">
                         <button className="btn btn-outline btn-sm" onClick={() => setEditItem(it)}>编辑</button>

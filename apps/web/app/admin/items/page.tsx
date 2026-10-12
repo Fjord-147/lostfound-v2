@@ -7,6 +7,10 @@ import { photosOf, CATEGORY_ICONS, CATEGORY_STYLE, CATEGORIES, fmtDT } from "@/l
 import { toast, PhotoZoom, Modal, ConfirmDanger } from "@/components/ui";
 import ClaimDrawer from "@/components/ClaimDrawer";
 
+// 表格列（表头可拖拽调宽，宽度记忆在 localStorage）
+const COLS = ["照片", "编号", "名称", "类别", "捡到地点", "捡到时间", "状态", "捡到人", "登记人", "认领人", "认领时间", "操作"];
+const DEFAULT_COLW: Record<string, number> = { 照片: 60, 编号: 116, 类别: 100, 状态: 96, 捡到时间: 116, 认领时间: 116, 操作: 230 };
+
 export default function ItemsPage() {
   const [items, setItems] = useState<any[]>([]);
   const [status, setStatus] = useState("待认领");
@@ -23,6 +27,31 @@ export default function ItemsPage() {
   const [me, setMe] = useState("");
 
   const [noFeature, setNoFeature] = useState(false);
+  // 列宽：默认 + localStorage 记忆，表头右缘拖拽调整（WPS 式）
+  const [colWidths, setColWidths] = useState<Record<string, number>>({ ...DEFAULT_COLW });
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("lf_colw") || "{}");
+      setColWidths({ ...DEFAULT_COLW, ...saved });
+    } catch { /* 忽略损坏的本地记忆 */ }
+  }, []);
+  function startResize(col: string, e: React.MouseEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const th = (e.target as HTMLElement).closest("th");
+    const startW = th?.offsetWidth || 100;
+    const onMove = (ev: MouseEvent) => {
+      const w = Math.max(48, Math.round(startW + ev.clientX - startX));
+      setColWidths((prev) => ({ ...prev, [col]: w }));
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      setColWidths((prev) => { try { localStorage.setItem("lf_colw", JSON.stringify(prev)); } catch { /* 私密模式 */ } return prev; });
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
 
   useEffect(() => {
     // 无记忆时按屏幕宽默认：手机=卡片（表格在窄屏太挤）
@@ -108,11 +137,17 @@ export default function ItemsPage() {
       {/* 表格视图 */}
       {view === "table" && (
         <div className="card overflow-x-auto p-0">
-          <table className="w-full text-sm">
+          <table className="items-fixed w-full text-sm" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr className="bg-brand-light text-left text-brand-dark">
-                {["照片", "编号", "名称", "类别", "捡到地点", "捡到时间", "状态", "捡到人", "登记人", "认领人", "认领时间", "操作"].map((h) => (
-                  <th key={h} className="whitespace-nowrap px-3 py-2.5 font-semibold">{h}</th>
+                {COLS.map((h, i) => (
+                  <th key={h} className="relative whitespace-nowrap px-3 py-2.5 font-semibold" style={colWidths[h] ? { width: colWidths[h] } : undefined}>
+                    {h}
+                    {i < COLS.length - 1 && (
+                      <span className="absolute inset-y-0 right-0 w-2 cursor-col-resize select-none hover:bg-brand/40" title="按住拖拽调整列宽"
+                        onMouseDown={(e) => startResize(h, e)} />
+                    )}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -153,7 +188,7 @@ export default function ItemsPage() {
                     <td className="whitespace-nowrap px-3 py-2">{it.claimedAt || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2">
                       <div className="flex gap-1.5">
-                        <button className="btn btn-outline btn-sm !px-2.5" title="编辑物品" onClick={() => setEditItem(it)}>✏</button>
+                        <button className="btn btn-outline btn-sm" onClick={() => setEditItem(it)}>编辑</button>
                         {it.source === "患者报失" && (
                           <button className="btn btn-sm !bg-emerald-600 !from-emerald-600 !to-emerald-700" title="确认找到：患者进度条显示「已找到，请尽快来领」" onClick={() => confirmFoundItem(it)}>找到</button>
                         )}
@@ -227,7 +262,7 @@ export default function ItemsPage() {
                   </div>
                 )}
                 <div className="mt-auto flex justify-end gap-2 pt-2.5">
-                  <button className="btn btn-outline btn-sm" onClick={() => setEditItem(it)}>✏ 编辑</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => setEditItem(it)}>编辑</button>
                   {it.source === "患者报失" && (
                     <button className="btn btn-sm !bg-emerald-600 !from-emerald-600 !to-emerald-700" title="确认找到：患者进度条显示「已找到，请尽快来领」" onClick={() => confirmFoundItem(it)}>找到</button>
                   )}

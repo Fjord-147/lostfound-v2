@@ -98,3 +98,11 @@ body {
 .badge-pulse {
   animation: badgePulse 2s infinite;
 }
+
+/* 失物总表：固定布局下列内容超宽时省略号截断（配合表头拖拽调宽） */
+.items-fixed th,
+.items-fixed td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

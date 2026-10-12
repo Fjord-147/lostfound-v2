@@ -1,6 +1,6 @@
 "use client";
 // 失物总表：表格/卡片双视图 + 筛选搜索日期 + ✏编辑 + 就地认领 + 照片放大轮播
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { photosOf, CATEGORY_ICONS, CATEGORY_STYLE, CATEGORIES, fmtDT } from "@/lib/types";
@@ -12,6 +12,7 @@ const COLS = ["照片", "编号", "名称", "类别", "捡到地点", "捡到时
 const DEFAULT_COLW: Record<string, number> = { 照片: 60, 编号: 116, 类别: 100, 状态: 96, 捡到时间: 116, 认领时间: 116, 操作: 230 };
 
 export default function ItemsPage() {
+  const tableRef = useRef<HTMLTableElement>(null);
   const [items, setItems] = useState<any[]>([]);
   const [status, setStatus] = useState("待认领");
   const [q, setQ] = useState("");
@@ -37,13 +38,25 @@ export default function ItemsPage() {
       setColWidths({ ...DEFAULT_COLW, ...saved });
     } catch { /* 忽略损坏的本地记忆 */ }
   }, []);
-  function startResize(col: string, e: React.MouseEvent) {
+  function startResize(col: string, colIndex: number, e: React.MouseEvent) {
     e.preventDefault();
     const startX = e.clientX;
     const th = (e.target as HTMLElement).closest("th");
     const startW = th?.offsetWidth || 100;
+    // 封顶：该列（表头+所有单元格）内容刚好全显示所需宽度，再宽没有意义
+    let maxW = 480;
+    try {
+      const table = tableRef.current;
+      if (table) {
+        let need = 0;
+        const cells = table.querySelectorAll(`td:nth-child(${colIndex + 1})`);
+        cells.forEach((td) => { need = Math.max(need, (td as HTMLElement).scrollWidth); });
+        if (th) need = Math.max(need, th.scrollWidth);
+        maxW = Math.min(Math.max(need + 10, 64), 480);
+      }
+    } catch { /* 测量失败用默认上限 */ }
     const onMove = (ev: MouseEvent) => {
-      const w = Math.max(48, Math.round(startW + ev.clientX - startX));
+      const w = Math.min(Math.max(48, Math.round(startW + ev.clientX - startX)), maxW);
       setColWidths((prev) => ({ ...prev, [col]: w }));
     };
     const onUp = () => {
@@ -149,16 +162,16 @@ export default function ItemsPage() {
           </div>
         )}
         <div className="card overflow-x-auto p-0">
-          <table className="items-fixed w-full text-sm" style={{ tableLayout: "fixed" }}>
+          <table ref={tableRef} className="items-fixed w-full text-sm" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr className="bg-brand-light text-left text-brand-dark">
                 {COLS.map((h, i) => (
-                  <th key={h} className="group relative whitespace-nowrap border-r border-slate-200 px-3 py-2.5 font-semibold last:border-r-0" style={colWidths[h] ? { width: colWidths[h] } : undefined}>
+                  <th key={h} className="group relative whitespace-nowrap px-3 py-2.5 font-semibold" style={colWidths[h] ? { width: colWidths[h] } : undefined}>
                     {h}
                     {i < COLS.length - 1 && (
-                      <span className="absolute inset-y-0 right-0 flex w-4 cursor-col-resize select-none items-center justify-center"
-                        title="按住拖拽调整列宽" onMouseDown={(e) => startResize(h, e)}>
-                        <span className="h-4 w-[3px] rounded-full bg-slate-300 transition group-hover:bg-brand group-hover:h-5" />
+                      <span className="absolute inset-y-0 right-0 flex w-[7px] cursor-col-resize select-none items-center justify-center"
+                        title="按住拖拽调整列宽（到顶即全显示）" onMouseDown={(e) => startResize(h, i, e)}>
+                        <span className="h-4 w-px rounded-full bg-slate-300 transition-all group-hover:h-5 group-hover:w-[3px] group-hover:bg-brand" />
                       </span>
                     )}
                   </th>

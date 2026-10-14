@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { CATEGORY_ICONS, fmtDT } from "@/lib/types";
-import { toast, ConfirmDanger, PhotoZoom, Drawer, Modal } from "@/components/ui";
+import { toast, PhotoZoom, Drawer, Modal } from "@/components/ui";
 import PhotoPicker, { PickedPhoto } from "@/components/PhotoPicker";
 import { uploadFiles, dataUrlToBlob } from "@/lib/api";
 import { nowLocalStr, HIGH_VALUE_CATEGORIES } from "@/lib/types";
@@ -159,14 +159,24 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* 登记入总表确认 */}
-      <ConfirmDanger open={!!confirmReg} onClose={() => setConfirmReg(null)} title="登记入总表"
-        hint={`将此报失（${confirmReg?.itemName}）登记入失物总表，标记为患者报失。`}
-        onConfirm={register} />
-      {/* 忽略确认 */}
-      <ConfirmDanger open={!!confirmIg} onClose={() => setConfirmIg(null)} title="忽略报失"
-        hint="确定要忽略这条报失吗？忽略后可在「已忽略」里恢复。"
-        onConfirm={ignore} />
+      {/* 登记入总表确认（点确定即可，可撤销） */}
+      <Modal open={!!confirmReg} onClose={() => setConfirmReg(null)}>
+        <div className="mb-2 text-lg font-semibold">登记入总表</div>
+        <div className="mb-4 text-sm text-slate-500">将报失「<strong>{confirmReg?.itemName}</strong>」登记入失物总表，标记为患者报失。（之后可在「已登记」里撤销）</div>
+        <div className="flex gap-3">
+          <button className="btn btn-outline flex-1" onClick={() => setConfirmReg(null)}>取消</button>
+          <button className="btn flex-1" onClick={() => { setConfirmReg(null); register(); }}>确定登记</button>
+        </div>
+      </Modal>
+      {/* 忽略确认（点确定即可，可恢复） */}
+      <Modal open={!!confirmIg} onClose={() => setConfirmIg(null)}>
+        <div className="mb-2 text-lg font-semibold">忽略报失</div>
+        <div className="mb-4 text-sm text-slate-500">确定忽略这条报失吗？忽略后可在「已忽略」页签恢复。</div>
+        <div className="flex gap-3">
+          <button className="btn btn-outline flex-1" onClick={() => setConfirmIg(null)}>取消</button>
+          <button className="btn flex-1" onClick={() => { setConfirmIg(null); ignore(); }}>确定忽略</button>
+        </div>
+      </Modal>
       {/* 确认找到（患者进度条推进到「已找到」） */}
       <Modal open={!!confirmFound} onClose={() => setConfirmFound(null)}>
         <div className="mb-2 text-lg font-semibold">📣 确认找到</div>

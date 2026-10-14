@@ -1,10 +1,9 @@
 "use client";
-// 认领管理：已认领列表 + ✏物品/✎认领/↩撤销(输确认)/🗑删除(输确认)
+// 认领管理：已认领列表 + ✎认领/↩撤销(输确认)/🗑删除(输确认)；物品信息编辑在失物总表
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { photosOf, CATEGORY_ICONS, CATEGORY_STYLE } from "@/lib/types";
 import { toast, Modal, ConfirmDanger, PhotoZoom } from "@/components/ui";
-import { CATEGORIES } from "@/lib/types";
 
 export default function ClaimsPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -13,7 +12,6 @@ export default function ClaimsPage() {
   const [unclaimItem, setUnclaimItem] = useState<any>(null);
   const [delItem, setDelItem] = useState<any>(null);
   const [editClaim, setEditClaim] = useState<any>(null);
-  const [editItem, setEditItem] = useState<any>(null);
   const [zoom, setZoom] = useState<{ photos: string[]; start: number } | null>(null);
 
   useEffect(() => setView((localStorage.getItem("lf_cview") as any) || "table"), []);
@@ -71,7 +69,6 @@ export default function ClaimsPage() {
                   <td className="whitespace-nowrap px-3 py-2">{it.operator || "—"}</td>
                   <td className="whitespace-nowrap px-3 py-2">
                     <div className="flex gap-1.5">
-                      <button className="btn btn-outline btn-sm" onClick={() => setEditItem(it)}>✏ 物品</button>
                       <button className="btn btn-outline btn-sm" onClick={() => setEditClaim(it)}>✎ 认领</button>
                       <button className="btn btn-danger btn-sm" onClick={() => setUnclaimItem(it)}>↩ 撤销</button>
                       <button className="btn btn-danger btn-sm" onClick={() => setDelItem(it)}>🗑</button>
@@ -118,7 +115,6 @@ export default function ClaimsPage() {
                   <div><span className="text-slate-500">经办人：</span>{it.operator || "—"}</div>
                 </div>
                 <div className="mt-2.5 flex flex-wrap justify-end gap-2">
-                  <button className="btn btn-outline btn-sm" onClick={() => setEditItem(it)}>✏ 物品</button>
                   <button className="btn btn-outline btn-sm" onClick={() => setEditClaim(it)}>✎ 认领信息</button>
                   <button className="btn btn-danger btn-sm" onClick={() => setUnclaimItem(it)}>↩ 撤销认领</button>
                   <button className="btn btn-danger btn-sm" onClick={() => setDelItem(it)}>🗑 删除</button>
@@ -134,7 +130,6 @@ export default function ClaimsPage() {
       <ConfirmDanger open={!!delItem} onClose={() => setDelItem(null)} title="删除整条记录"
         hint={`将永久删除 ${delItem?.code} ${delItem?.name} 及其所有照片，无法恢复！`} onConfirm={doDelete} />
       <EditClaimModal item={editClaim} onClose={() => setEditClaim(null)} onSaved={() => { setEditClaim(null); load(); }} />
-      <EditItemModal item={editItem} onClose={() => setEditItem(null)} onSaved={() => { setEditItem(null); load(); }} />
       {zoom && <PhotoZoom photos={zoom.photos} start={zoom.start} onClose={() => setZoom(null)} />}
     </div>
   );
@@ -177,77 +172,3 @@ function EditClaimModal({ item, onClose, onSaved }: { item: any; onClose: () => 
   );
 }
 
-function EditItemModal({ item, onClose, onSaved }: { item: any; onClose: () => void; onSaved: () => void }) {
-  const photos = item ? photosOf(item) : [];
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
-  useEffect(() => {
-    if (item) {
-      const h = new Set<string>((item.hiddenPhotos || "").split(",").map((x: string) => x.trim()).filter(Boolean));
-      setHidden(h);
-    }
-  }, [item]);
-  function toggleHide(p: string) {
-    setHidden((prev) => {
-      const n = new Set(prev);
-      if (n.has(p)) n.delete(p);
-      else n.add(p);
-      return n;
-    });
-  }
-  const [f, setF] = useState<any>(null);
-  useEffect(() => {
-    if (item) setF({ name: item.name, category: item.category || "其他", description: item.description || "", foundLocation: item.foundLocation || "", foundTime: (item.foundTime || "").replace(" ", "T"), storageLocation: item.storageLocation || "", founder: item.source === "患者报失" ? "患者报失" : item.founder || "", locked: item.source === "患者报失" });
-  }, [item]);
-  if (!item || !f) return null;
-  return (
-    <Modal open={!!item} onClose={onClose} wide>
-      <form onSubmit={async (e) => {
-        e.preventDefault();
-        const d = await api(`/api/items/${item.id}`, { method: "PUT", body: JSON.stringify({ ...f, hiddenPhotos: [...hidden].join(',') || null, }) });
-        if (d.ok) { toast(d.msg, "success"); onSaved(); } else toast(d.msg, "error");
-      }}>
-        <div className="mb-1 text-lg font-semibold">编辑物品信息</div>
-        <div className="mb-4 text-[13px] text-slate-500">编号 {item.code}</div>
-        <div className="mb-3.5"><label className="lbl">物品名称 *</label><input className="inp" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></div>
-        <div className="mb-3.5 grid grid-cols-2 gap-3.5">
-          <div><label className="lbl">类别</label><select className="inp" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></div>
-          <div><label className="lbl">捡到地点</label><input className="inp" value={f.foundLocation} onChange={(e) => setF({ ...f, foundLocation: e.target.value })} /></div>
-        </div>
-        <div className="mb-3.5"><label className="lbl">特征描述</label><textarea className="inp min-h-[70px]" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
-        <div className="mb-3.5 grid grid-cols-2 gap-3.5">
-          <div><label className="lbl">捡到时间</label><input type="datetime-local" className="inp" value={f.foundTime} onChange={(e) => setF({ ...f, foundTime: e.target.value })} /></div>
-          <div><label className="lbl">捡到人</label><input className="inp" value={f.founder} disabled={f.locked} onChange={(e) => setF({ ...f, founder: e.target.value })} /></div>
-        </div>
-        <div className="mb-4"><label className="lbl">存放位置</label><input className="inp" value={f.storageLocation} onChange={(e) => setF({ ...f, storageLocation: e.target.value })} /></div>
-      <div className="mb-4">
-        <label className="lbl">照片可见性（点 🔒 切换：隐藏后公众端看不到该张）</label>
-        <div className="flex flex-wrap gap-2">
-          {photos.map((p) => (
-            <div key={p} className="relative h-[72px] w-[72px] overflow-hidden rounded-md border border-slate-300">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`/api/upload/files/${p}`} className={`h-full w-full object-cover ${hidden.has(p) ? "opacity-35" : ""}`} alt="" />
-              <button
-                type="button"
-                title={hidden.has(p) ? "已隐藏（公众看不到），点击公开" : "公众可见，点击隐藏"}
-                onClick={() => toggleHide(p)}
-                className="absolute bottom-0.5 left-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white/90 text-[11px]"
-              >
-                {hidden.has(p) ? "🔒" : "🔓"}
-              </button>
-              {hidden.has(p) && (
-                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-white/90 px-1 text-[10px] font-semibold text-red-600">已隐藏</span>
-              )}
-            </div>
-          ))}
-          {photos.length === 0 && <span className="text-sm text-slate-400">无照片</span>}
-        </div>
-      </div>
-
-        <div className="flex gap-3">
-          <button type="button" className="btn btn-outline flex-1" onClick={onClose}>取消</button>
-          <button className="btn flex-1">保存修改</button>
-        </div>
-      </form>
-    </Modal>
-  );
-}

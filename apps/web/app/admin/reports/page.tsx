@@ -93,7 +93,7 @@ export default function ReportsPage() {
 
       <div className="card mb-4 flex gap-2 p-4">
         <input className="inp sm:w-72" placeholder="按失主姓名/电话/物品名搜索" value={q} onChange={(e) => setQ(e.target.value)} />
-        <button className="btn btn-outline btn-sm" onClick={load}>筛选</button>
+        <button className="btn btn-outline btn-sm" onClick={load}>查找</button>
         <button className="btn btn-outline btn-sm" onClick={() => setQ("")}>重置</button>
       </div>
 

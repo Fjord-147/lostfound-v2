@@ -213,7 +213,7 @@ export default function ItemsPage() {
           <input type="text" className="inp w-36" placeholder="2026-07-12" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="支持 2026/7/12 等格式" />
           <span className="text-slate-300">至</span>
           <input type="text" className="inp w-36" placeholder="2026-07-12" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          <button className="btn btn-outline btn-sm" onClick={load}>筛选</button>
+          <button className="btn btn-outline btn-sm" onClick={load}>查找</button>
           <button className="btn btn-outline btn-sm" onClick={() => { setQ(""); setDateFrom(""); setDateTo(""); }}>重置</button>
         </div>
       </div>

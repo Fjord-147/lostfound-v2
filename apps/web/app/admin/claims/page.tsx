@@ -38,7 +38,7 @@ export default function ClaimsPage() {
 
       <div className="card mb-4 flex flex-wrap items-center gap-2 p-4">
         <input className="inp sm:w-72" placeholder="按编号/名称/认领人/电话搜索" value={q} onChange={(e) => setQ(e.target.value)} />
-        <button className="btn btn-outline btn-sm" onClick={load}>筛选</button>
+        <button className="btn btn-outline btn-sm" onClick={load}>查找</button>
         <button className="btn btn-outline btn-sm" onClick={() => setQ("")}>重置</button>
         <div className="ml-auto flex overflow-hidden rounded-lg border border-slate-300">
           <button onClick={() => { setView("table"); localStorage.setItem("lf_cview", "table"); }} className={`px-3.5 py-1.5 text-sm ${view === "table" ? "bg-brand text-white" : "bg-white text-slate-500"}`}>📋</button>

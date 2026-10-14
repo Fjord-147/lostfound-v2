@@ -82,6 +82,26 @@ router.get("/pending-count", async (_req, res) => {
   res.json({ ok: true, count });
 });
 
+// POST /api/reports/batch —— 批量处理（勾选多条一次忽略/恢复，清积压用）
+router.post("/batch", async (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter((n: number) => Number.isInteger(n)) : [];
+  const action = String(req.body?.action || "");
+  if (!ids.length || ids.length > 100) return res.status(400).json({ ok: false, msg: "请选择要处理的报失（1-100条）" });
+  if (action !== "ignore" && action !== "reopen") return res.status(400).json({ ok: false, msg: "未知操作" });
+  const me = req.authUser!;
+  const result = await prisma.lostReport.updateMany({
+    where: { id: { in: ids }, ...(action === "ignore" ? { status: "待查找" } : { status: "已忽略" }) },
+    data: {
+      status: action === "ignore" ? "已忽略" : "待查找",
+      note: action === "ignore" ? "批量忽略" : "批量恢复待查找",
+      handledBy: me.name,
+      handledAt: fmtNow(),
+    },
+  });
+  await audit(req, `report_batch_${action}`, "lost_report", null, { ids, count: result.count });
+  res.json({ ok: true, msg: `已${action === "ignore" ? "忽略" : "恢复"} ${result.count} 条报失` });
+});
+
 // POST /api/reports/:id/register —— 登记入失物总表（患者报失来源）
 router.post("/:id/register", async (req, res) => {
   const id = Number(req.params.id);

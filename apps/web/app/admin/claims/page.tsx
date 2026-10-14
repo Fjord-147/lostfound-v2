@@ -51,7 +51,7 @@ export default function ClaimsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-brand-light text-left text-brand-dark">
-                {["编号", "名称", "认领人", "电话", "自述特征", "人群/性别", "认领时间", "经办人", "操作"].map((h) => (
+                {["编号", "名称", "认领人", "电话", "自述特征", "认领时间", "经办人", "操作"].map((h) => (
                   <th key={h} className="whitespace-nowrap px-3 py-2.5 font-semibold">{h}</th>
                 ))}
               </tr>
@@ -61,10 +61,14 @@ export default function ClaimsPage() {
                 <tr key={it.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="whitespace-nowrap px-3 py-2">{it.code}</td>
                   <td className="px-3 py-2 font-medium">{it.name}</td>
-                  <td className="px-3 py-2">{it.claimerName}</td>
+                  <td className="px-3 py-2">
+                    <div>{it.claimerName}</div>
+                    {(it.claimerGroup || it.claimerGender) && (
+                      <div className="text-xs text-slate-400">{it.claimerGroup || "—"} · {it.claimerGender || "—"}</div>
+                    )}
+                  </td>
                   <td className="whitespace-nowrap px-3 py-2">{it.claimerPhone || "未留"}</td>
                   <td className="max-w-[220px] truncate px-3 py-2 text-slate-500" title={it.claimerNote || ""}>{it.claimerNote || "—"}</td>
-                  <td className="whitespace-nowrap px-3 py-2">{it.claimerGroup || "—"}/{it.claimerGender || "—"}</td>
                   <td className="whitespace-nowrap px-3 py-2">{it.claimedAt}</td>
                   <td className="whitespace-nowrap px-3 py-2">{it.operator || "—"}</td>
                   <td className="whitespace-nowrap px-3 py-2">

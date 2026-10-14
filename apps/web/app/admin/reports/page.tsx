@@ -18,6 +18,7 @@ export default function ReportsPage() {
   const [confirmReg, setConfirmReg] = useState<any>(null);
   const [confirmIg, setConfirmIg] = useState<any>(null);
   const [confirmFound, setConfirmFound] = useState<any>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
   const [foundRep, setFoundRep] = useState<any>(null);
   const [zoomPhotos, setZoomPhotos] = useState<string[] | null>(null);
   const [me, setMe] = useState("");
@@ -31,6 +32,7 @@ export default function ReportsPage() {
     });
     // 通知侧边栏/底部导航角标即时刷新
     window.dispatchEvent(new Event("lf-refresh-badge"));
+    setSelected(new Set());
   }, [status, q]);
   useEffect(() => { load(); }, [load]);
 
@@ -55,6 +57,14 @@ export default function ReportsPage() {
     const d = await api(`/api/reports/${rep.id}/handle`, { method: "POST", body: JSON.stringify({ action: "reopen" }) });
     toast(d.msg, d.ok ? "success" : "error");
     if (d.ok) load();
+  }
+  async function batchIgnore() {
+    if (!confirm(`确定把选中的 ${selected.size} 条报失全部忽略吗？`)) return;
+    const d = await api("/api/reports/batch", {
+      method: "POST", body: JSON.stringify({ ids: [...selected], action: "ignore" }),
+    });
+    toast(d.msg, d.ok ? "success" : "error");
+    if (d.ok) { setSelected(new Set()); load(); }
   }
   async function doConfirmFound() {
     const d = await api(`/api/reports/${confirmFound.id}/confirm-found`, {
@@ -91,6 +101,11 @@ export default function ReportsPage() {
         {reports.map((r) => (
           <div key={r.id} className={`card border-l-4 p-4 ${r.status === "已找到" ? "border-l-green-500 opacity-90" : r.status === "已忽略" ? "border-l-slate-400 opacity-70" : "border-l-orange-400"}`}>
             <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
+              {r.status === "待查找" && (
+                <input type="checkbox" className="h-4.5 w-4.5 h-[18px] w-[18px] shrink-0 accent-brand"
+                  checked={selected.has(r.id)}
+                  onChange={(e) => setSelected((prev) => { const n = new Set(prev); e.target.checked ? n.add(r.id) : n.delete(r.id); return n; })} />
+              )}
               <span className="text-[17px] font-semibold line-clamp-2 break-all">{r.itemName}</span>
               <span className={`tag ${r.status === "已找到" ? "tag-returned" : r.status === "待领取" ? "tag-pending" : r.status === "待查找" ? "tag-pending" : "bg-slate-100 text-slate-500"}`}>{r.status}</span>
               <span className="ml-auto text-xs text-slate-400">{r.createdAt}</span>
@@ -134,6 +149,15 @@ export default function ReportsPage() {
         ))}
         {reports.length === 0 && <div className="card py-10 text-center text-slate-400">没有报失记录</div>}
       </div>
+
+      {/* 批量操作条（仅待查找视图） */}
+      {status === "待查找" && selected.size > 0 && (
+        <div className="sticky bottom-16 z-40 mx-auto flex max-w-xl items-center gap-3 rounded-full border border-brand bg-white px-5 py-2.5 shadow-lg md:bottom-4">
+          <span className="text-sm font-semibold text-brand-dark">已选 {selected.size} 条</span>
+          <button className="btn btn-sm ml-auto" onClick={batchIgnore}>批量忽略</button>
+          <button className="btn btn-outline btn-sm" onClick={() => setSelected(new Set())}>取消</button>
+        </div>
+      )}
 
       {/* 登记入总表确认 */}
       <ConfirmDanger open={!!confirmReg} onClose={() => setConfirmReg(null)} title="登记入总表"

@@ -61,6 +61,17 @@ CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST $B/api/public/report -H 'C
   -d '{"ownerName":"无特征失主","ownerPhone":"13677778888","itemName":"一串钥匙"}')
 [ "$CODE" = "400" ] && ok "6d 患者报失缺特征被拒(400)" || bad "6d 报失必填" "HTTP $CODE"
 
+# 6e 批量忽略：两条报失一次忽略
+curl -s -X POST $B/api/public/report -H 'Content-Type: application/json' -H 'X-Forwarded-For: 4.4.4.4' \
+  -d '{"ownerName":"批量甲","ownerPhone":"13611110001","itemName":"围巾一条","description":"灰色羊毛围巾很长"}' > /dev/null
+curl -s -X POST $B/api/public/report -H 'Content-Type: application/json' -H 'X-Forwarded-For: 4.4.4.4' \
+  -d '{"ownerName":"批量乙","ownerPhone":"13611110002","itemName":"手套一副","description":"黑色皮手套单只"}' > /dev/null
+IDS=$(curl -s -b /tmp/v2_cookie.txt -G "$B/api/reports" --data-urlencode "status=待查找" --data-urlencode "q=批量" | python3 -c "import sys,json; print(json.dumps([r['id'] for r in json.load(sys.stdin)['reports']]))")
+R=$(curl -s -b /tmp/v2_cookie.txt -X POST $B/api/reports/batch -H 'Content-Type: application/json' -d "{\"ids\":$IDS,\"action\":\"ignore\"}")
+echo "$R" | grep -q '"ok":true' && ok "6e 批量忽略两条报失" || bad "6e 批量忽略" "$R"
+R=$(curl -s -b /tmp/v2_cookie.txt -X POST $B/api/reports/batch -H 'Content-Type: application/json' -d "{\"ids\":$IDS,\"action\":\"reopen\"}")
+echo "$R" | grep -q '"ok":true' && ok "6f 批量恢复待查找" || bad "6f 批量恢复" "$R"
+
 # 7 hiddenPhotos 非子集被拒
 ID=$(curl -s -b /tmp/v2_cookie.txt "$B/api/items?q=HYPERLINK" | python3 -c "import sys,json;print(json.load(sys.stdin)['items'][0]['id'])")
 CODE=$(curl -s -o /dev/null -w '%{http_code}' -b /tmp/v2_cookie.txt -X PUT $B/api/items/$ID -H 'Content-Type: application/json' -d '{"name":"=HYPERLINK(\"http://evil.example\",\"点我\")","hiddenPhotos":"not_a_photo.jpg"}')

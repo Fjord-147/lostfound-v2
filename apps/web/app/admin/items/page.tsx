@@ -13,6 +13,23 @@ const PENDING_COLS = ["照片", "编号", "物品", "存放", "捡到区域", "�
 const ALL_COLS = ["照片", "编号", "物品", "存放", "捡到区域", "登记人", "捡到人", "认领人", "认领时间", "状态", "操作"];
 const DEFAULT_COLW: Record<string, number> = { 照片: 60, 编号: 116, 状态: 110, 操作: 200 };
 
+// 日期快捷范围：今天/昨天/本周/本月（与报失页丢失时间的同款思路）
+function ymd(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function quickRange(kind: string): { from: string; to: string } {
+  const now = new Date();
+  const today = ymd(now);
+  if (kind === "今天") return { from: today, to: today };
+  if (kind === "昨天") { const y = ymd(new Date(now.getTime() - 86_400_000)); return { from: y, to: y }; }
+  if (kind === "本周") {
+    const dow = (now.getDay() + 6) % 7; // 周一=0
+    return { from: ymd(new Date(now.getTime() - dow * 86_400_000)), to: today };
+  }
+  return { from: today.slice(0, 7) + "-01", to: today }; // 本月
+}
+
 export default function ItemsPage() {
   const tableRef = useRef<HTMLTableElement>(null);
   const [status, setStatus] = useState("待认领");
@@ -176,6 +193,19 @@ export default function ItemsPage() {
               </div>
             )}
           </div>
+        </div>
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {["今天", "昨天", "本周", "本月"].map((k) => (
+            <button key={k} type="button"
+              className={`rounded-full border px-3 py-1 text-xs transition ${dateFrom === quickRange(k).from && dateTo === quickRange(k).to ? "border-brand bg-brand font-medium text-white" : "border-slate-200 bg-white text-slate-500 hover:border-brand"}`}
+              onClick={() => { const r = quickRange(k); setDateFrom(r.from); setDateTo(r.to); }}>
+              {k}
+            </button>
+          ))}
+          {(dateFrom || dateTo) && (
+            <button type="button" className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-400 hover:text-slate-600"
+              onClick={() => { setDateFrom(""); setDateTo(""); }}>清除日期</button>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input className="inp sm:w-56" placeholder="编号/名称/类别/特征" value={q} onChange={(e) => setQ(e.target.value)} />
